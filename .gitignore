@@ -1,0 +1,8 @@
+build/*
+node_modules/*
+package-lock.json
+contracts-mainnet.json
+contracts-unit-test.json
+contracts-integration-test.json
+
+migrations/
