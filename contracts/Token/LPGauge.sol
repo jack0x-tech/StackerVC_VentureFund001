@@ -11,22 +11,21 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../Interfaces/IMinter.sol";
-
 contract LPGauge is ReentrancyGuard {
 	using SafeERC20 for IERC20;
 	using Address for address;
     using SafeMath for uint256;
 
-    address public governance;
-    address public STACK;
+    address payable public governance;
     address public token;
+
+    // TODO: get STACK token address
+    address public constant STACK = 0x514910771AF9Ca656af840dff83E8264EcF986CA; // TODO: need to deploy this contract, incorrect address, this is LINK token
 
     uint256 public emissionRate; // amount of STACK/block given
 
     uint256 public deposited;
 
-    // TODO: make endBlock updateable during the distribution???
     uint256 public constant startBlock = 300;
     uint256 public endBlock = startBlock + 100;
 
@@ -35,7 +34,7 @@ contract LPGauge is ReentrancyGuard {
     uint256 public lastBlock; // last block the distribution has ran
     uint256 public tokensAccrued; // tokens to distribute per weight scaled by 1e18
 
-    struct DepositState{
+    struct DepositState {
     	uint256 balance;
     	uint256 tokensAccrued;
     }
@@ -44,16 +43,16 @@ contract LPGauge is ReentrancyGuard {
 
     event Deposit(address indexed from, uint256 amount);
     event Withdraw(address indexed to, uint256 amount);
+    event STACKClaimed(address indexed to, uint256 amount);
 
-    constructor(address _STACK, address _token, uint256 _emissionRate) public {
+    constructor(address _token, uint256 _emissionRate) public {
     	governance = msg.sender;
 
-    	STACK = _STACK;
     	token = _token;
     	emissionRate = _emissionRate;
     }
 
-    function setGovernance(address _new) external {
+    function setGovernance(address payable _new) external {
     	require(msg.sender == governance);
     	governance = _new;
     }
@@ -84,14 +83,11 @@ contract LPGauge is ReentrancyGuard {
     	deposited = deposited.add(_amount);
 
     	emit Deposit(msg.sender, _amount);
-
     	balances[msg.sender] = _state;
     }
 
     function withdraw(uint256 _amount) nonReentrant external {
     	_claimSTACK(msg.sender);
-
-    	uint256 _amtToWithdraw = 0;
 
     	DepositState memory _state = balances[msg.sender];
 
@@ -99,13 +95,11 @@ contract LPGauge is ReentrancyGuard {
 
     	_state.balance = _state.balance.sub(_amount);
     	deposited = deposited.sub(_amount);
-    	_amtToWithdraw = _amtToWithdraw.add(_amount);
 
     	emit Withdraw(msg.sender, _amount);
-
     	balances[msg.sender] = _state;
 
-    	IERC20(token).safeTransfer(msg.sender, _amtToWithdraw);
+    	IERC20(token).safeTransfer(msg.sender, _amount);
     }
 
     function claimSTACK() nonReentrant external {
@@ -126,7 +120,14 @@ contract LPGauge is ReentrancyGuard {
     		_state.tokensAccrued = tokensAccrued;
     		balances[_user] = _state;
 
-    		IERC20(STACK).safeTransfer(_user, _tokensGive);
+            // if the guage has enough tokens to grant the user, then send their tokens
+            // otherwise, don't fail, just log STACK claimed, and a reimbursement can be done via chain events
+            if (IERC20(STACK).balanceOf(address(this)) >= _tokensGive){
+                IERC20(STACK).safeTransfer(_user, _tokensGive);
+            }
+
+            // log event
+            emit STACKClaimed(_user, _tokensGive);
     	}
     }
 
@@ -141,33 +142,41 @@ contract LPGauge is ReentrancyGuard {
     		return;
     	}
 
-    	if (IMinter(STACK).minters(address(this))){
+		uint256 _deltaBlock;
+		// edge case where kick was not called for entire period of blocks.
+		if (lastBlock <= startBlock && block.number >= endBlock){
+			_deltaBlock = endBlock.sub(startBlock);
+		}
+		// where block.number is past the endBlock
+		else if (block.number >= endBlock){
+			_deltaBlock = endBlock.sub(lastBlock);
+		}
+		// where last block is before start
+		else if (lastBlock <= startBlock){
+			_deltaBlock = block.number.sub(startBlock);
+		}
+		// normal case, where we are in the middle of the distribution
+		else {
+			_deltaBlock = block.number.sub(lastBlock);
+		}
 
-    		uint256 _deltaBlock;
-    		// edge case where kick was not called for entire period of blocks.
-    		if (lastBlock <= startBlock && block.number >= endBlock){
-    			_deltaBlock = endBlock.sub(startBlock);
-    		}
-    		// where block.number is past the endBlock
-    		else if (block.number >= endBlock){
-    			_deltaBlock = endBlock.sub(lastBlock);
-    		}
-    		// where last block is before start
-    		else if (lastBlock <= startBlock){
-    			_deltaBlock = block.number.sub(startBlock);
-    		}
-    		// normal case, where we are in the middle of the distribution
-    		else {
-    			_deltaBlock = block.number.sub(lastBlock);
-    		}
-
-    		uint256 _tokensToMint = _deltaBlock.mul(emissionRate);
-    		tokensAccrued = tokensAccrued.add(_tokensToMint.mul(1e18).div(_totalDeposited));
-    		IMinter(STACK).mint(address(this), _tokensToMint);
-    	}
+		uint256 _tokensToAccrue = _deltaBlock.mul(emissionRate);
+		tokensAccrued = tokensAccrued.add(_tokensToAccrue.mul(1e18).div(_totalDeposited));
 
     	// if not allowed to mint it's just like the emission rate = 0. So just update the lastBlock.
     	// always update last block 
     	lastBlock = block.number;
+    }
+
+    // decentralized rescue function for any stuck tokens, will return to governance
+    function rescue(address _token, uint256 _amount) nonReentrant external {
+        require(msg.sender == governance, "!governance");
+
+        if (_token != address(0)){
+            IERC20(_token).safeTransfer(governance, _amount);
+        }
+        else { // if _tokenContract is 0x0, then escape ETH
+            governance.transfer(_amount);
+        }
     }
 }

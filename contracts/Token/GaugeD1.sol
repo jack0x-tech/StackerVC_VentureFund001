@@ -14,18 +14,17 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../Interfaces/IMinter.sol";
-
 contract GaugeD1 is ReentrancyGuard {
 	using SafeERC20 for IERC20;
 	using Address for address;
     using SafeMath for uint256;
 
-    address public governance;
-    address public vcHolding; // holding account for all committed funds
-    address public STACK; // STACK ERC20 token contract
+    address payable public governance;
     address public acceptToken; // set up gauge for +ETH, +BTC, +LINK, etc.
-    address public vaultGaugeBridge; // the bridge address to allow people one transaction to do: (token <-> yEarn token <-> commit)
+    address public vaultGaugeBridge; // the bridge address to allow people one transaction to do: (token <-> alphaHomora <-> commit)
+
+    // TODO: get STACK token address
+    address public constant STACK = 0x514910771AF9Ca656af840dff83E8264EcF986CA; // TODO: need to deploy this contract, incorrect address, this is LINK token
 
     uint256 public emissionRate; // amount of STACK/block given
 
@@ -46,8 +45,9 @@ contract GaugeD1 is ReentrancyGuard {
     event Deposit(address indexed from, uint256 amountCommitSoft, uint256 amountCommitHard);
     event Withdraw(address indexed to, uint256 amount);
     event Upgrade(address indexed user, uint256 amount);
+    event STACKClaimed(address indexed to, uint256 amount);
 
-    bool public fundOpen = true; // reject all new deposits and upgradeCommits
+    bool public fundOpen = true; // TODO: reject hard commits, upgrade commits
 
     // uint256 public constant startBlock = 100;
     // uint256 public endBlock = startBlock + 100;
@@ -58,24 +58,17 @@ contract GaugeD1 is ReentrancyGuard {
     uint256 public lastBlock; // last block the distribution has ran
     uint256 public tokensAccrued; // tokens to distribute per weight scaled by 1e18
 
-    constructor(address _vcHolding, address _STACK, address _acceptToken, address _vaultGaugeBridge, uint256 _emissionRate) public {
+    constructor(address _acceptToken, address _vaultGaugeBridge, uint256 _emissionRate) public {
     	governance = msg.sender;
 
-    	vcHolding = _vcHolding;
-    	STACK = _STACK;
     	acceptToken = _acceptToken;
     	vaultGaugeBridge = _vaultGaugeBridge;
     	emissionRate = _emissionRate;
     }
 
-    function setGovernance(address _new) external {
-    	require(msg.sender == governance);
-    	governance = _new;
-    }
-
-    function setVCHolding(address _new) external {
+    function setGovernance(address payable _new) external {
     	require(msg.sender == governance, "GAUGE: !governance");
-    	vcHolding = _new;
+    	governance = _new;
     }
 
     function setEmissionRate(uint256 _new) external {
@@ -84,16 +77,17 @@ contract GaugeD1 is ReentrancyGuard {
     	emissionRate = _new;
     }
 
-    function setFundOpen(bool _open) external {
-    	require(msg.sender == governance, "GAUGE: !governance");
-    	fundOpen = _open;
-    }
-
     function setEndBlock(uint256 _block) external {
     	require(msg.sender == governance, "GAUGE: !governance");
     	require(block.number <= endBlock, "GAUGE: distribution already done, must start another");
+        require(block.number <= _block, "GAUGE: can't set endBlock to past block");
 
     	endBlock = _block;
+    }
+
+    function setFundOpen(bool _open) external {
+        require(msg.sender == governance, "GAUGE: !governance");
+        fundOpen = _open;
     }
 
     function deposit(uint256 _amountCommitSoft, uint256 _amountCommitHard, address _creditTo) nonReentrant external {
@@ -105,9 +99,8 @@ contract GaugeD1 is ReentrancyGuard {
 
     	// transfer tokens from sender to account
     	uint256 _acceptTokenAmount = _amountCommitSoft.add(_amountCommitHard);
-    	if (_acceptTokenAmount > 0){
-    		IERC20(acceptToken).safeTransferFrom(msg.sender, address(this), _acceptTokenAmount);
-    	}
+    	require(_acceptTokenAmount > 0, "!tokens");
+    	IERC20(acceptToken).safeTransferFrom(msg.sender, address(this), _acceptTokenAmount);
 
     	CommitState memory _state = balances[_creditTo];
     	// no need to update _state.tokensAccrued because that's already done in _claimSTACK
@@ -119,7 +112,7 @@ contract GaugeD1 is ReentrancyGuard {
     		_state.balanceCommitHard = _state.balanceCommitHard.add(_amountCommitHard);
 			depositedCommitHard = depositedCommitHard.add(_amountCommitHard);
 
-            IERC20(acceptToken).transfer(vcHolding, _amountCommitHard);
+            IERC20(acceptToken).safeTransfer(governance, _amountCommitHard); // transfer out any hard commits right away
     	}
 
 		emit Deposit(_creditTo, _amountCommitSoft, _amountCommitHard);
@@ -141,7 +134,7 @@ contract GaugeD1 is ReentrancyGuard {
         depositedCommitSoft = depositedCommitSoft.sub(_amount);
         depositedCommitHard = depositedCommitHard.add(_amount);
 
-        IERC20(acceptToken).safeTransfer(vcHolding, _amount);
+        IERC20(acceptToken).safeTransfer(governance, _amount);
 
     	emit Upgrade(msg.sender, _amount);
     	balances[msg.sender] = _state;
@@ -166,7 +159,7 @@ contract GaugeD1 is ReentrancyGuard {
     	balances[_withdrawFor] = _state;
 
     	// IMPORTANT: send tokens to msg.sender, not _withdrawFor. This will send to msg.sender OR vaultGaugeBridge (see second require() ).
-        // the bridge contract will then forward these tokens to the sender (after withdrawing from yEarn)
+        // the bridge contract will then forward these tokens to the sender (after withdrawing from yield farm)
     	IERC20(acceptToken).safeTransfer(msg.sender, _amount);
     }
 
@@ -189,8 +182,13 @@ contract GaugeD1 is ReentrancyGuard {
     		_state.tokensAccrued = tokensAccrued;
     		balances[_user] = _state;
 
-    		// now send tokens to user
-    		IERC20(STACK).safeTransfer(_user, _tokensGive);
+    		// if the guage has enough tokens to grant the user, then send their tokens
+            // otherwise, don't fail, just log STACK claimed, and a reimbursement can be done via chain events
+            if (IERC20(STACK).balanceOf(address(this)) >= _tokensGive){
+                IERC20(STACK).safeTransfer(_user, _tokensGive);
+            }
+
+            emit STACKClaimed(_user, _tokensGive);
     	}
     }
 
@@ -204,32 +202,28 @@ contract GaugeD1 is ReentrancyGuard {
     	if (lastBlock == block.number || lastBlock >= endBlock || block.number < startBlock){ 
     		return; 
     	}
-    	// accrue tokens to account from minter, and add the proportion to tokensAccrued
-    	if (IMinter(STACK).minters(address(this))){
 
-    		uint256 _deltaBlock;
-    		// edge case where kick was not called for the entire period of blocks.
-    		if (lastBlock <= startBlock && block.number >= endBlock){
-    			_deltaBlock = endBlock.sub(startBlock);
-    		}
-    		// where block.number is past the endBlock
-    		else if (block.number >= endBlock){
-    			_deltaBlock = endBlock.sub(lastBlock);
-    		}
-    		// where last block is before start
-    		else if (lastBlock <= startBlock){
-    			_deltaBlock = block.number.sub(startBlock);
-    		}
-    		// normal case, where we are in the middle of the distribution
-    		else {
-    			_deltaBlock = block.number.sub(lastBlock);
-    		}
+		uint256 _deltaBlock;
+		// edge case where kick was not called for the entire period of blocks.
+		if (lastBlock <= startBlock && block.number >= endBlock){
+			_deltaBlock = endBlock.sub(startBlock);
+		}
+		// where block.number is past the endBlock
+		else if (block.number >= endBlock){
+			_deltaBlock = endBlock.sub(lastBlock);
+		}
+		// where last block is before start
+		else if (lastBlock <= startBlock){
+			_deltaBlock = block.number.sub(startBlock);
+		}
+		// normal case, where we are in the middle of the distribution
+		else {
+			_deltaBlock = block.number.sub(lastBlock);
+		}
 
-    		// mint tokens & update tokensAccrued global
-    		uint256 _tokensToMint = _deltaBlock.mul(emissionRate);
-    		tokensAccrued = tokensAccrued.add(_tokensToMint.mul(1e18).div(_totalWeight));
-    		IMinter(STACK).mint(address(this), _tokensToMint);
-    	}
+		// mint tokens & update tokensAccrued global
+		uint256 _tokensToAccrue = _deltaBlock.mul(emissionRate);
+		tokensAccrued = tokensAccrued.add(_tokensToAccrue.mul(1e18).div(_totalWeight));
 
     	// if not allowed to mint it's just like the emission rate = 0. So just update the lastBlock.
     	// always update last block 
@@ -242,7 +236,7 @@ contract GaugeD1 is ReentrancyGuard {
     	require(block.number > endBlock, "GAUGE: <=endBlock");
 
         // transfer all remaining ERC20 tokens to the VC address. Fund entry has closed, VC fund will start.
-    	IERC20(acceptToken).safeTransfer(vcHolding, IERC20(acceptToken).balanceOf(address(this)));
+    	IERC20(acceptToken).safeTransfer(governance, IERC20(acceptToken).balanceOf(address(this)));
     }
 
     function getTotalWeight() public view returns (uint256){
@@ -272,5 +266,17 @@ contract GaugeD1 is ReentrancyGuard {
 
     function getCommitted() public view returns (uint256, uint256, uint256){
         return (depositedCommitSoft, depositedCommitHard, getTotalBalance());
+    }
+
+    // decentralized rescue function for any stuck tokens, will return to governance
+    function rescue(address _token, uint256 _amount) nonReentrant external {
+        require(msg.sender == governance, "!governance");
+
+        if (_token != address(0)){
+            IERC20(_token).safeTransfer(governance, _amount);
+        }
+        else { // if _tokenContract is 0x0, then escape ETH
+            governance.transfer(_amount);
+        }
     }
 }
