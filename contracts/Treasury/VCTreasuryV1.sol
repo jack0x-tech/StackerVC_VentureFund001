@@ -37,7 +37,7 @@ contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 	bool public killed;
 	address public constant BET_TOKEN = 0xfdd4E938Bb067280a52AC4e02AaF1502Cc882bA6;
 	address public constant STACK_TOKEN = 0x514910771AF9Ca656af840dff83E8264EcF986CA; // TODO: need to deploy this contract, incorrect address, this is LINK token
-	address public constant BASE_TOKEN = 0x67B66C99D3Eb37Fa76Aa3Ed1ff33E8e39F0b9c7A; // currently AlphaHomora_ibETH, this is the token that's held & we try to earn more via a successful fund
+	address public constant BASE_TOKEN = 0xeEa3311250FE4c3268F8E684f7C87A82fF183Ec1; // currently AlphaHomora_ibETHv2, this is the token that's held & we try to earn more via a successful fund
 
 	// we have some looping in the contract. have a limit for loops so that they succeed.
 	// loops & especially unbounded loops are bad solidity design.
