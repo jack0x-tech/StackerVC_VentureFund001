@@ -21,7 +21,7 @@ contract VaultGaugeBridge is ReentrancyGuard {
 	using Address for address;
     using SafeMath for uint256;
 
-    address payable public constant AlphaHomora_ibETH = 0xeEa3311250FE4c3268F8E684f7C87A82fF183Ec1;
+    address payable public constant AlphaHomora_ibETH = 0x4943d622C6BF9F0cdb997B2174c70F60B03c716d;
 
     address public governance;
     address public gauge;

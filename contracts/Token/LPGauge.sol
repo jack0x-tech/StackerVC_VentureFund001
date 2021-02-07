@@ -20,14 +20,14 @@ contract LPGauge is ReentrancyGuard {
     address public token;
 
     // TODO: get STACK token address
-    address public constant STACK = 0x514910771AF9Ca656af840dff83E8264EcF986CA; // TODO: need to deploy this contract, incorrect address, this is LINK token
+    address public constant STACK = 0x1b95324b43f577F7fb04db53b9102c2F1A12A891; // TODO: need to deploy this contract, incorrect address, this is LINK token
 
     uint256 public emissionRate; // amount of STACK/block given
 
     uint256 public deposited;
 
-    uint256 public constant startBlock = 300;
-    uint256 public endBlock = startBlock + 100;
+    uint256 public constant startBlock = 8028529 + 1000;
+    uint256 public endBlock = startBlock + 100000;
 
     // uint256 public constant startBlock = 11226037 + 100;
     // uint256 public endBlock = startBlock + 2425846;
@@ -45,9 +45,8 @@ contract LPGauge is ReentrancyGuard {
     event Withdraw(address indexed to, uint256 amount);
     event STACKClaimed(address indexed to, uint256 amount);
 
-    constructor(address _token, uint256 _emissionRate) public {
-    	governance = msg.sender;
-
+    constructor(address payable _governance, address _token, uint256 _emissionRate) public {
+    	governance = _governance;
     	token = _token;
     	emissionRate = _emissionRate;
     }

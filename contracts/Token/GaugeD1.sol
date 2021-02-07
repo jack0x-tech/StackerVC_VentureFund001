@@ -24,7 +24,7 @@ contract GaugeD1 is ReentrancyGuard {
     address public vaultGaugeBridge; // the bridge address to allow people one transaction to do: (token <-> alphaHomora <-> commit)
 
     // TODO: get STACK token address
-    address public constant STACK = 0x514910771AF9Ca656af840dff83E8264EcF986CA; // TODO: need to deploy this contract, incorrect address, this is LINK token
+    address public constant STACK = 0x1b95324b43f577F7fb04db53b9102c2F1A12A891;
 
     uint256 public emissionRate; // amount of STACK/block given
 
@@ -47,20 +47,16 @@ contract GaugeD1 is ReentrancyGuard {
     event Upgrade(address indexed user, uint256 amount);
     event STACKClaimed(address indexed to, uint256 amount);
 
-    bool public fundOpen = true; // TODO: reject hard commits, upgrade commits
+    bool public fundOpen = true;
 
-    // uint256 public constant startBlock = 100;
-    // uint256 public endBlock = startBlock + 100;
-
-    uint256 public constant startBlock = 11226037 + 100;
-    uint256 public endBlock = startBlock + 598154;
+    uint256 public constant startBlock = 8028529 + 1000;
+    uint256 public endBlock = startBlock + 100000;
 
     uint256 public lastBlock; // last block the distribution has ran
     uint256 public tokensAccrued; // tokens to distribute per weight scaled by 1e18
 
-    constructor(address _acceptToken, address _vaultGaugeBridge, uint256 _emissionRate) public {
-    	governance = msg.sender;
-
+    constructor(address payable _governance, address _acceptToken, address _vaultGaugeBridge, uint256 _emissionRate) public {
+    	governance = _governance;
     	acceptToken = _acceptToken;
     	vaultGaugeBridge = _vaultGaugeBridge;
     	emissionRate = _emissionRate;
