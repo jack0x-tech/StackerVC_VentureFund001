@@ -24,13 +24,13 @@ contract WrapETH is ERC20, ReentrancyGuard, IAlphaHomora_ibETH {
     	deposit();
     }
 
-    function deposit() payable external nonReentrant {
+    function deposit() payable public override nonReentrant {
     	uint256 _issue = msg.value.mul(exchange_rate);
 
     	_mint(msg.sender, _issue);
     }
 
-    function withdraw(uint256 amount) external nonReentrant {
+    function withdraw(uint256 amount) external override nonReentrant {
     	_burn(msg.sender, amount);
     	uint256 _send = amount.div(exchange_rate);
     	msg.sender.transfer(_send);
