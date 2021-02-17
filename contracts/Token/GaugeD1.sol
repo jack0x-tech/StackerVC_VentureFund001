@@ -159,16 +159,16 @@ contract GaugeD1 is ReentrancyGuard {
     	IERC20(acceptToken).safeTransfer(msg.sender, _amount);
     }
 
-    function claimSTACK() nonReentrant external {
-    	_claimSTACK(msg.sender);
+    function claimSTACK() nonReentrant external returns (uint256) {
+    	return _claimSTACK(msg.sender);
     }
 
-    function _claimSTACK(address _user) internal {
+    function _claimSTACK(address _user) internal returns (uint256){
     	_kick();
 
     	CommitState memory _state = balances[_user];
     	if (_state.tokensAccrued == tokensAccrued){ // user doesn't have any accrued tokens
-    		return;
+    		return 0;
     	}
     	// user has accrued tokens from their commit
     	else {
@@ -185,6 +185,8 @@ contract GaugeD1 is ReentrancyGuard {
             }
 
             emit STACKClaimed(_user, _tokensGive);
+
+            return _tokensGive;
     	}
     }
 

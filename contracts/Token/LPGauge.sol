@@ -101,16 +101,16 @@ contract LPGauge is ReentrancyGuard {
     	IERC20(token).safeTransfer(msg.sender, _amount);
     }
 
-    function claimSTACK() nonReentrant external {
-    	_claimSTACK(msg.sender);
+    function claimSTACK() nonReentrant external returns (uint256) {
+    	return _claimSTACK(msg.sender);
     }
 
-    function _claimSTACK(address _user) internal {
+    function _claimSTACK(address _user) internal returns (uint256) {
     	_kick();
 
     	DepositState memory _state = balances[_user];
     	if (_state.tokensAccrued == tokensAccrued){ // user doesn't have any accrued tokens
-    		return;
+    		return 0;
     	}
     	else {
     		uint256 _tokensAccruedDiff = tokensAccrued.sub(_state.tokensAccrued);
@@ -127,6 +127,8 @@ contract LPGauge is ReentrancyGuard {
 
             // log event
             emit STACKClaimed(_user, _tokensGive);
+
+            return _tokensGive;
     	}
     }
 
