@@ -14,8 +14,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../Interfaces/IMinter.sol";
-
 contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 	using SafeERC20 for IERC20;
 	using Address for address;

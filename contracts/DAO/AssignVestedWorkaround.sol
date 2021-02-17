@@ -7,9 +7,13 @@
 
 pragma solidity ^0.6.11;
 
+import "@openzeppelin/contracts/utils/Address.sol";
+
 import "../Interfaces/ITokenManager.sol";
 
 contract AssignVestedWorkaround {
+	using Address for address;
+
 	address public tokenManager;
 	address public governance;
 
