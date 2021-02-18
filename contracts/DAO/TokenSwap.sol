@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol"; // call ERC20 safely
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
+import "../Interfaces/ITokenManager.sol";
+
 contract TokenSwap {
 	using SafeERC20 for IERC20;
 	using Address for address;
@@ -21,15 +23,27 @@ contract TokenSwap {
     uint256 public rate;
     uint256 public amountIn;
 
-    constructor(address payable _receiver, address _buyer, address _tokenManager, uint256 _rate, uint256 _amountIn) public {
-    	governance = msg.sender;
+    bool public paused = false;
 
-    	receiver = _receiver;
+    // vesting constants
+    uint64 public constant start = 1614585600;
+    uint64 public constant cliff = 1625122800;
+    uint64 public constant vested = 1646121600;
+    bool public constant revokable = false;
+
+    constructor(address _buyer, address _tokenManager, uint256 _rate, uint256 _amountIn) public {
+    	governance = msg.sender;
+    	receiver = msg.sender;
+    	
     	buyer = _buyer;
     	tokenManager = _tokenManager;
 
     	rate = _rate;
     	amountIn = _amountIn;
+    }
+
+    receive() external payable {
+    	swap();
     }
 
     function setReceiver(address payable _new) external {
@@ -60,6 +74,12 @@ contract TokenSwap {
     	rate = _new;
     }
 
+    function setPaused(bool _new) external {
+    	require(msg.sender == governance, "SWAP: !governance");
+
+    	paused = _new;
+    }
+
     // if amountIn is set to 0, then you do not have to purchase a fixed amount
     function setAmountIn(uint256 _new) external {
     	require(msg.sender == governance, "SWAP: !governance");
@@ -67,15 +87,23 @@ contract TokenSwap {
     	amountIn = _new;
     }
 
-    function swap() external payable {
+    function swap() public payable {
     	require(msg.sender == buyer || buyer == address(0), "SWAP: !buyer");
     	require(msg.value == amountIn || amountIn == 0, "SWAP: !amountIn");
+    	require(!paused, "SWAP: paused");
 
     	// receiver is trusted address to receive ETH
     	receiver.transfer(msg.value);
 
-    	uint256 _toSend = msg.value.mul(rate);
+    	uint256 _toSend = msg.value.mul(rate).div(1e18);
 
-    	
+    	ITokenManager(tokenManager).assignVested(
+    		msg.sender,
+    		_toSend,
+    		start,
+    		cliff,
+    		vested,
+    		revokable
+    	);
     }
 }

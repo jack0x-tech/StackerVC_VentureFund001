@@ -163,7 +163,7 @@ contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 		}
 	}
 
-	// seed the fund with BASE_TOKEN and start it up. 3 years until the fund is dissolved
+	// seed the fund with BASE_TOKEN and start it up. 1 year until fund is dissolved
 	function startFund() external {
 		require(currentState == FundStates.setup, "VCTREASURYV1: !FundStates.setup");
 		require(msg.sender == governance, "VCTREASURYV1: !governance");
@@ -175,7 +175,7 @@ contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 		// fund must be sent BASE_TOKEN before initialization
 		initETH = IERC20(BASE_TOKEN).balanceOf(address(this));
 		require(initETH > 0, "VCTREASURYV1: !initETH");
-		maxInvestment = initETH.div(max).mul(investmentCap);
+		maxInvestment = initETH.mul(investmentCap).div(max);
 
 		_changeFundState(FundStates.active); // set fund active!
 	}
@@ -390,11 +390,11 @@ contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 	}
 
 	function killQuorumRequirement() public view returns (uint256) {
-		return totalSupply().div(max).mul(killQuorum);
+		return totalSupply().mul(killQuorum).div(max);
 	}
 
 	function pauseQuorumRequirement() public view returns (uint256) {
-		return totalSupply().div(max).mul(pauseQuorum);
+		return totalSupply().mul(pauseQuorum).div(max);
 	}
 
 	function checkCloseTime() external {
@@ -423,7 +423,7 @@ contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 
 	// when closing the fund, assess the fee for STACK holders/council. then close fund.
 	function _assessFee() internal {
-		uint256 _fee = totalSupply().div(max).mul(DAOFee);
+		uint256 _fee = totalSupply().mul(DAOFee).div(max);
 
 		_mint(governance, _fee);
 	}
