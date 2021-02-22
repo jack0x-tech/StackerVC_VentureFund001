@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /*
-This is a Stacker.vc VC Treasury version 1 contract. It initiates a 3 year VC Fund that makes investments in ETH, and tries to sell previously acquired ERC20's at a profit.
+This is a Stacker.vc VC Treasury version 1 contract. It initiates a 1 year VC Fund that makes investments in ETH, and tries to sell previously acquired ERC20's at a profit.
 This fund also has veto functionality by SVC001 token holders. A token holder can stop all buys and sells OR even close the fund early.
 */
 

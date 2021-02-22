@@ -15,13 +15,14 @@ contract TokenSwap {
     using SafeMath for uint256;
 
     address payable public receiver;
-    address public governance;
+    address payable public governance;
     address public buyer;
 
     address public tokenManager;
 
     uint256 public rate;
     uint256 public amountIn;
+    address public coinIn;
 
     bool public paused = false;
 
@@ -31,19 +32,20 @@ contract TokenSwap {
     uint64 public constant vested = 1646121600;
     bool public constant revokable = false;
 
-    constructor(address _buyer, address _tokenManager, uint256 _rate, uint256 _amountIn) public {
+    constructor(address _tokenManager, address _buyer, uint256 _rate, uint256 _amountIn, address _coinIn) public {
     	governance = msg.sender;
     	receiver = msg.sender;
+
+        tokenManager = _tokenManager;
     	
     	buyer = _buyer;
-    	tokenManager = _tokenManager;
-
     	rate = _rate;
     	amountIn = _amountIn;
+        coinIn = _coinIn;
     }
 
     receive() external payable {
-    	swap();
+    	swap(msg.value);
     }
 
     function setReceiver(address payable _new) external {
@@ -53,25 +55,20 @@ contract TokenSwap {
     	receiver = _new;
     }
 
-    function setGovernance(address _new) external {
+    function setGovernance(address payable _new) external {
     	require(msg.sender == governance, "SWAP: !governance");
     	require(_new != address(0), "SWAP: governance == 0x0");
 
     	governance = _new;
     }
 
-    // if buyer is set to 0x0, then the sale is open to the public
-    function setBuyer(address _new) external {
-    	require(msg.sender == governance, "SWAP: !governance");
+    function setTransfer(address _buyer, uint256 _rate, uint256 _amountIn, address _coinIn) external {
+        require(msg.sender == governance, "SWAP: !governance");
 
-    	buyer = _new;
-    }
-
-    function setRate(uint256 _new) external {
-    	require(msg.sender == governance, "SWAP: !governance");
-    	require(_new != 0, "SWAP: !rate");
-
-    	rate = _new;
+        buyer = _buyer;
+        rate = _rate;
+        amountIn = _amountIn;
+        coinIn = _coinIn;
     }
 
     function setPaused(bool _new) external {
@@ -80,22 +77,31 @@ contract TokenSwap {
     	paused = _new;
     }
 
-    // if amountIn is set to 0, then you do not have to purchase a fixed amount
-    function setAmountIn(uint256 _new) external {
-    	require(msg.sender == governance, "SWAP: !governance");
-
-    	amountIn = _new;
-    }
-
-    function swap() public payable {
+    function swap(uint256 _amount) public payable {
     	require(msg.sender == buyer || buyer == address(0), "SWAP: !buyer");
-    	require(msg.value == amountIn || amountIn == 0, "SWAP: !amountIn");
     	require(!paused, "SWAP: paused");
 
-    	// receiver is trusted address to receive ETH
-    	receiver.transfer(msg.value);
+        // receiving ETH...
+        if (coinIn == address(0)){
+            require(msg.value == _amount, "SWAP: ETH transfer error");
+            require(msg.value == amountIn || amountIn == 0, "SWAP: !amountIn for ETH");
 
-    	uint256 _toSend = msg.value.mul(rate).div(1e18);
+            // receiver is trusted address to receive ETH
+            receiver.transfer(msg.value);
+        }
+        else {
+            // receiver is trusted address to receive token
+            uint256 _before = IERC20(coinIn).balanceOf(receiver);
+            IERC20(coinIn).safeTransferFrom(msg.sender, receiver, _amount);
+            uint256 _after = IERC20(coinIn).balanceOf(receiver);
+            uint256 _total = _after.sub(_before);
+
+            require(_total == _amount, "SWAP: ERC20 transfer error");
+            require(_total == amountIn || amountIn == 0, "SWAP: !amountIn for ERC20");
+        }
+
+    	
+    	uint256 _toSend = _amount.mul(rate).div(1e18);
 
     	ITokenManager(tokenManager).assignVested(
     		msg.sender,
@@ -105,5 +111,16 @@ contract TokenSwap {
     		vested,
     		revokable
     	);
+    }
+
+    function rescue(address _token, uint256 _amount) external {
+        require(msg.sender == governance, "SWAP: !governance");
+
+        if (_token != address(0)){
+            IERC20(_token).safeTransfer(governance, _amount);
+        }
+        else { // if _tokenContract is 0x0, then escape ETH
+            governance.transfer(_amount);
+        }
     }
 }
