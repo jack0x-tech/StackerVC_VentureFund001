@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 /*
-TODO: info
-TODO: fundOpen = false doesn't disallow soft commits anymore
+A gauge to allow users to commit to Stacker.vc fund 1. This will reward STACK tokens for hard and soft commits, as well as link with a ibETH gateway, to allow users
+to deposit ETH directly into the fund.
 
-
+ibETH is sent to the STACK DAO governance contract, for future VC fund initialization.
 */
 
 pragma solidity ^0.6.11;
@@ -19,14 +19,14 @@ contract GaugeD1 is ReentrancyGuard {
 	using Address for address;
     using SafeMath for uint256;
 
-    address payable public governance;
-    address public acceptToken; // set up gauge for +ETH, +BTC, +LINK, etc.
+    address payable public governance = 0xB156d2D9CAdB12a252A9015078fc5cb7E92e656e; // STACK DAO Agent address
+    address public constant acceptToken = 0xeEa3311250FE4c3268F8E684f7C87A82fF183Ec1; // AlphaHomora ibETHv2
     address public vaultGaugeBridge; // the bridge address to allow people one transaction to do: (token <-> alphaHomora <-> commit)
 
     // TODO: get STACK token address
-    address public constant STACK = 0x1b95324b43f577F7fb04db53b9102c2F1A12A891;
+    address public constant STACK = 0xe0955F26515d22E347B17669993FCeFcc73c3a0a; // STACK DAO Token
 
-    uint256 public emissionRate; // amount of STACK/block given
+    uint256 public emissionRate = 127797067901235000; // amount of STACK/block given
 
     uint256 public depositedCommitSoft;
     uint256 public depositedCommitHard;
@@ -49,17 +49,14 @@ contract GaugeD1 is ReentrancyGuard {
 
     bool public fundOpen = true;
 
-    uint256 public constant startBlock = 8028529 + 1000;
-    uint256 public endBlock = startBlock + 100000;
+    uint256 public constant startBlock = 11955015;
+    uint256 public endBlock = startBlock + 391245;
 
     uint256 public lastBlock; // last block the distribution has ran
     uint256 public tokensAccrued; // tokens to distribute per weight scaled by 1e18
 
-    constructor(address payable _governance, address _acceptToken, address _vaultGaugeBridge, uint256 _emissionRate) public {
-    	governance = _governance;
-    	acceptToken = _acceptToken;
+    constructor(address _vaultGaugeBridge) public {
     	vaultGaugeBridge = _vaultGaugeBridge;
-    	emissionRate = _emissionRate;
     }
 
     function setGovernance(address payable _new) external {
@@ -95,7 +92,7 @@ contract GaugeD1 is ReentrancyGuard {
 
     	// transfer tokens from sender to account
     	uint256 _acceptTokenAmount = _amountCommitSoft.add(_amountCommitHard);
-    	require(_acceptTokenAmount > 0, "!tokens");
+    	require(_acceptTokenAmount > 0, "GAUGE: !tokens");
     	IERC20(acceptToken).safeTransferFrom(msg.sender, address(this), _acceptTokenAmount);
 
     	CommitState memory _state = balances[_creditTo];
@@ -268,7 +265,7 @@ contract GaugeD1 is ReentrancyGuard {
 
     // decentralized rescue function for any stuck tokens, will return to governance
     function rescue(address _token, uint256 _amount) nonReentrant external {
-        require(msg.sender == governance, "!governance");
+        require(msg.sender == governance, "GAUGE: !governance");
 
         if (_token != address(0)){
             IERC20(_token).safeTransfer(governance, _amount);

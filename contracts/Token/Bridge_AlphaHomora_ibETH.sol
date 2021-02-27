@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*
-A bridge that connects yEarn Vault contracts to our STACK gauge contracts. 
-This allows users to submit only one transaction to go from (supported ERC20 <-> yEarn vault <-> STACK commit to VC fund)
+A bridge that connects AlphaHomora ibETH contracts to our STACK gauge contracts. 
+This allows users to submit only one transaction to go from (supported ERC20 <-> AlphaHomora <-> STACK commit to VC fund)
 They will be able to deposit & withdraw in both directions.
 */
 
@@ -21,9 +21,9 @@ contract VaultGaugeBridge is ReentrancyGuard {
 	using Address for address;
     using SafeMath for uint256;
 
-    address payable public constant AlphaHomora_ibETH = 0x4943d622C6BF9F0cdb997B2174c70F60B03c716d;
+    address payable public constant AlphaHomora_ibETH = 0xeEa3311250FE4c3268F8E684f7C87A82fF183Ec1; // AlphaHomora ibETHv2 deposit/withdraw contract & ERC20 contract
 
-    address public governance;
+    address payable public governance;
     address public gauge;
 
     constructor () public {
@@ -42,12 +42,12 @@ contract VaultGaugeBridge is ReentrancyGuard {
         }
     }
 
-    function setGovernance(address _new) external {
+    function setGovernance(address payable _new) external {
         require(msg.sender == governance, "BRIDGE: !governance");
         governance = _new;
     }
 
-    // create a new bridge, warning this allows an overwrite
+    // set the gauge to bridge ibETH to
     function setGauge(address _gauge) external {
     	require(msg.sender == governance, "BRIDGE: !governance");
         require(gauge == address(0), "BRIDGE: gauge already set");
@@ -100,5 +100,17 @@ contract VaultGaugeBridge is ReentrancyGuard {
     	else {
     		IGaugeD1(gauge).deposit(_amount, 0, _user);
     	}
+    }
+
+    // decentralized rescue function for any stuck tokens, will return to governance
+    function rescue(address _token, uint256 _amount) nonReentrant external {
+        require(msg.sender == governance, "BRIDGE: !governance");
+
+        if (_token != address(0)){
+            IERC20(_token).safeTransfer(governance, _amount);
+        }
+        else { // if _tokenContract is 0x0, then escape ETH
+            governance.transfer(_amount);
+        }
     }
 }

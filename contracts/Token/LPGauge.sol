@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 /*
-A simple guage contract to measure the amount of tokens locked, and reward users in a different token.
+A simple gauge contract to measure the amount of tokens locked, and reward users in a different token.
+
+Using this for STACK/ETH Uni LP currently.
 */
 
 pragma solidity ^0.6.11;
@@ -16,18 +18,18 @@ contract LPGauge is ReentrancyGuard {
 	using Address for address;
     using SafeMath for uint256;
 
-    address payable public governance;
-    address public token;
+    address payable public governance = 0xB156d2D9CAdB12a252A9015078fc5cb7E92e656e; // STACK DAO Agent address
+    address public constant acceptToken = 0xd78E04a200048a438D9D03C9A3d7E5154dE643b1; // STACK/ETH Uniswap LP Token
 
     // TODO: get STACK token address
-    address public constant STACK = 0x1b95324b43f577F7fb04db53b9102c2F1A12A891; // TODO: need to deploy this contract, incorrect address, this is LINK token
+    address public constant STACK = 0xe0955F26515d22E347B17669993FCeFcc73c3a0a; // STACK DAO Token
 
-    uint256 public emissionRate; // amount of STACK/block given
+    uint256 public emissionRate = 25209284627092800; // amount of STACK/block given
 
     uint256 public deposited;
 
-    uint256 public constant startBlock = 8028529 + 1000;
-    uint256 public endBlock = startBlock + 100000;
+    uint256 public constant startBlock = 11955015;
+    uint256 public endBlock = startBlock + 2380075;
 
     // uint256 public constant startBlock = 11226037 + 100;
     // uint256 public endBlock = startBlock + 2425846;
@@ -45,10 +47,7 @@ contract LPGauge is ReentrancyGuard {
     event Withdraw(address indexed to, uint256 amount);
     event STACKClaimed(address indexed to, uint256 amount);
 
-    constructor(address payable _governance, address _token, uint256 _emissionRate) public {
-    	governance = _governance;
-    	token = _token;
-    	emissionRate = _emissionRate;
+    constructor() public {
     }
 
     function setGovernance(address payable _new) external {
@@ -75,7 +74,7 @@ contract LPGauge is ReentrancyGuard {
 
     	_claimSTACK(msg.sender);
 
-    	IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
+    	IERC20(acceptToken).safeTransferFrom(msg.sender, address(this), _amount);
 
     	DepositState memory _state = balances[msg.sender];
     	_state.balance = _state.balance.add(_amount);
@@ -98,7 +97,7 @@ contract LPGauge is ReentrancyGuard {
     	emit Withdraw(msg.sender, _amount);
     	balances[msg.sender] = _state;
 
-    	IERC20(token).safeTransfer(msg.sender, _amount);
+    	IERC20(acceptToken).safeTransfer(msg.sender, _amount);
     }
 
     function claimSTACK() nonReentrant external returns (uint256) {
@@ -171,7 +170,7 @@ contract LPGauge is ReentrancyGuard {
 
     // decentralized rescue function for any stuck tokens, will return to governance
     function rescue(address _token, uint256 _amount) nonReentrant external {
-        require(msg.sender == governance, "!governance");
+        require(msg.sender == governance, "LPGAUGE: !governance");
 
         if (_token != address(0)){
             IERC20(_token).safeTransfer(governance, _amount);
