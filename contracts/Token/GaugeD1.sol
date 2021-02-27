@@ -26,7 +26,9 @@ contract GaugeD1 is ReentrancyGuard {
     // TODO: get STACK token address
     address public constant STACK = 0xe0955F26515d22E347B17669993FCeFcc73c3a0a; // STACK DAO Token
 
-    uint256 public emissionRate = 127797067901235000; // amount of STACK/block given
+    // uint256 public emissionRate = 127797067901235000; // amount of STACK/block given
+
+    uint256 public emissionRate = 127797160347097087; // 50k STACK total, div by delta block
 
     uint256 public depositedCommitSoft;
     uint256 public depositedCommitHard;
@@ -227,7 +229,6 @@ contract GaugeD1 is ReentrancyGuard {
 
     // a one-time use function to sweep any commitSoft to the vc fund rewards pool, after the 3 month window
     function sweepCommitSoft() nonReentrant public {
-    	require(msg.sender == governance, "GAUGE: !governance");
     	require(block.number > endBlock, "GAUGE: <=endBlock");
 
         // transfer all remaining ERC20 tokens to the VC address. Fund entry has closed, VC fund will start.

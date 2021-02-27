@@ -24,7 +24,9 @@ contract LPGauge is ReentrancyGuard {
     // TODO: get STACK token address
     address public constant STACK = 0xe0955F26515d22E347B17669993FCeFcc73c3a0a; // STACK DAO Token
 
-    uint256 public emissionRate = 25209284627092800; // amount of STACK/block given
+    // uint256 public emissionRate = 25209284627092800; // amount of STACK/block given
+
+    uint256 public emissionRate = 25209289623226158; // 60k STACK / delta blocks
 
     uint256 public deposited;
 
