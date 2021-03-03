@@ -23,10 +23,7 @@ contract GaugeD1 is ReentrancyGuard {
     address public constant acceptToken = 0xeEa3311250FE4c3268F8E684f7C87A82fF183Ec1; // AlphaHomora ibETHv2
     address public vaultGaugeBridge; // the bridge address to allow people one transaction to do: (token <-> alphaHomora <-> commit)
 
-    // TODO: get STACK token address
     address public constant STACK = 0xe0955F26515d22E347B17669993FCeFcc73c3a0a; // STACK DAO Token
-
-    // uint256 public emissionRate = 127797067901235000; // amount of STACK/block given
 
     uint256 public emissionRate = 127797160347097087; // 50k STACK total, div by delta block
 
