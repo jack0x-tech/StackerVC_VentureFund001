@@ -3,7 +3,7 @@
 
 
 const VCTreasuryV1 = artifacts.require("VCTreasuryV1");
-const STACKToken = artifacts.require("STACKToken");
+const MintableToken = artifacts.require("MintableToken");
 const BN = require('bn.js');
 const tassert = require('truffle-assertions');
 
@@ -224,7 +224,7 @@ contract("test treasury setup", async (accounts) => {
 
 	// init a generic token, and mint _amount to _address
 	async function _inittoken(_address, _amount){
-		let token = await STACKToken.new({from: accounts[0]});
+		let token = await MintableToken.new({from: accounts[0]});
 		await token.mint(_address, _amount, {from: accounts[0]});
 
 		return token;
@@ -445,14 +445,4 @@ contract("test treasury setup", async (accounts) => {
 
 
 	});
-
-	it("should ", async () => {
-
-	});
-
-
-
-
-
-
 });
