@@ -21,7 +21,6 @@ abstract contract FarmBossV1 {
 	mapping(address => mapping(bytes4 => bool)) public whitelist; // contracts -> mapping (functionSig -> allowed)
 	mapping(address => bool) public farmers;
 
-
 	// for passing to functions more cleanly
 	struct WhitelistData {
 		address account;
@@ -29,7 +28,7 @@ abstract contract FarmBossV1 {
 	}
 
 	// for passing to functions more cleanly
-	struct Approves{
+	struct Approves {
 		address token;
 		address allow;
 	}
@@ -50,8 +49,7 @@ abstract contract FarmBossV1 {
 	event NewApproval(address _token, address _contract);
 	event RmApproval(address _token, address _contract);
 
-	event Executed(bytes _returnData);
-	event Failed(bytes _returnData);
+	event ExecuteStatus(bool _success, bytes _returnData);
 
 	constructor(address payable _governance, address _treasury, address _underlying) public {
 		governance = _governance;
@@ -65,9 +63,11 @@ abstract contract FarmBossV1 {
 		_initFirstFarms();
 	}
 
-	// some fixed logic to set up the first farmers, farms, whitelists, approvals, etc.
-	// future farms will need to be approved by governance
+	
+	// function stub, this needs to be implemented in a contract which inherits this for a valid deployment
+    // some fixed logic to set up the first farmers, farms, whitelists, approvals, etc. future farms will need to be approved by governance
 	// called on init only
+    // IMPLEMENT THIS
 	function _initFirstFarms() internal virtual;
 
 	function setGovernance(address payable _new) external {
@@ -78,7 +78,7 @@ abstract contract FarmBossV1 {
 
 	function changeFarmers(address[] calldata _newFarmers, address[] calldata _rmFarmers) external {
 		require(msg.sender == governance, "FARMBOSSV1: !governance");
-		require(_newFarmers.length <= LOOP_LIMIT && _rmFarmers.length <= LOOP_LIMIT, "FARMBOSSV1: >LOOP_LIMIT"); //  dont allow unbounded loops
+		require(_newFarmers.length.add(_rmFarmers.length) <= LOOP_LIMIT, "FARMBOSSV1: >LOOP_LIMIT"); // dont allow unbounded loops
 
 		// add the new farmers in
 		for (uint256 i = 0; i < _newFarmers.length; i++){
@@ -95,9 +95,8 @@ abstract contract FarmBossV1 {
 	}
 
 	function addWhitelist(WhitelistData[] calldata _newActions, WhitelistData[] calldata _rmActions, Approves[] calldata _newApprovals, Approves[] calldata _newDepprovals) external {
-		
 		require(msg.sender == governance, "FARMBOSSV1: !governance");
-		require(_newActions.length.add(_rmActions.length).add(_newApprovals.length).add(_newDepprovals.length) <= LOOP_LIMIT);
+		require(_newActions.length.add(_rmActions.length).add(_newApprovals.length).add(_newDepprovals.length) <= LOOP_LIMIT, "FARMBOSSV1: >LOOP_LIMIT"); // dont allow unbounded loops
 
 		// add to whitelist
 		for (uint256 i = 0; i < _newActions.length; i++){
@@ -148,7 +147,10 @@ abstract contract FarmBossV1 {
 	// if there is a strategy that has additonal functionality for the farmer to take control of assets ie: Uniswap "add a send"
 	// then a "safe" wrapper contract must be made, ie: you can call Uniswap but "add a send is disabled, only msg.sender in this field"
 	// strategies must be checked carefully so that farmers cannot take control of assets. trustless farming!
-	function _checkContractAndFn(address _target, uint256 _value, bytes calldata _data) internal view returns(bool) {
+	function _checkContractAndFn(address _target, uint256 _value, bytes calldata _data) internal view returns (bool) {
+
+		_value; // squelch, we don't check value in V1
+
 		bytes4 _fnSig;
 		if (_data.length < 4){ // we are calling a payable function
 			_fnSig = 0x00000000;
@@ -162,11 +164,6 @@ abstract contract FarmBossV1 {
 		if (_fnSig == _transferSig || _fnSig == _approveSig || !whitelist[_target][_fnSig]){
 			return false;
 		}
-
-		_value; // squelch, we don't check value in V1
-		
-		// require(_fnSig != _transferSig && _fnSig != _approveSig, "FARMBOSSV1: farmer not allowed to transfer/approve ERC20");
-		// require(whitelist[_target][_fnSig], "FARMBOSSV1: target.fn() not allowed. ask DAO for approval.");
 		return true;
 	}
 
@@ -174,12 +171,7 @@ abstract contract FarmBossV1 {
 	function _execute(address payable _target, uint256 _value, bytes memory _data) internal returns (bool){
 		(bool _success, bytes memory _returnData) = _target.call{value: _value}(_data);
 
-		if (_success){
-			emit Executed(_returnData);
-		}
-		else {
-			emit Failed(_returnData);
-		}
+		emit ExecuteStatus(_success, _returnData);
 
 		return _success;
 	}

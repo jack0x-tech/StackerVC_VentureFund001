@@ -19,7 +19,6 @@ contract FarmBossV1_USDC is FarmBossV1 {
 	using Address for address;
 
 	// breaking some constants out here, getting stack ;) issues
-
 	bytes4 constant private add_liquidity_2 = 0x0b4c7e4d;
 	bytes4 constant private add_liquidity_3 = 0x4515cef3;
 	bytes4 constant private add_liquidity_4 = 0x029b2f34;

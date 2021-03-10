@@ -3,9 +3,14 @@
 This is a Stacker.vc FarmToken version 1 contract. It deploys a rebase token where it rebases to be equivalent to it's underlying token. 1 stackUSDT = 1 USDT.
 The underlying assets are used to farm on different smart contract and produce yield via the ever-expanding DeFi ecosystem.
 
-THANKS! To Lido DAO for the inspiration in more ways than one, but especially for a lot of the code here. 
-If you haven't already, stake your ETH for ETH2.0 with Lido.fi!
+NOTE: 
+This is an abstract contract, and two functions need to be implemented for a valid deployment: 
+_verify(address _account, uint256 _amountUnderlyingToSend) --> in order to pass any locks on sending funds/withdrawing
+_getTotalUnderlying() --> to know the total amount of funds under management
 
+THANKS! 
+To Lido DAO for the inspiration in more ways than one, but especially for a lot of the code here. 
+If you haven't already, stake your ETH for ETH2.0 with Lido.fi!
 Also thanks for Aragon for hosting our Stacker Ventures DAO, and for more inspiration!
 */
 
@@ -23,8 +28,8 @@ abstract contract FarmTokenV1 is IERC20 {
 	// shares are how a users balance is generated. For rebase tokens, balances are always generated at runtime, while shares stay constant.
 	// shares is your proportion of the total pool of invested UnderlyingToken
 	// shares are like a Compound.finance cToken, while our token balances are like an Aave aToken.
-	mapping (address => uint256) private shares;
-	mapping (address => mapping (address => uint256)) private allowances;
+	mapping(address => uint256) private shares;
+	mapping(address => mapping (address => uint256)) private allowances;
 
 	uint256 public totalShares;
 
@@ -33,7 +38,7 @@ abstract contract FarmTokenV1 is IERC20 {
 	string public underlying;
 	address public underlyingContract;
 
-	uint8 decimals;
+	uint8 public decimals;
 
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -180,11 +185,11 @@ abstract contract FarmTokenV1 is IERC20 {
 
         // It's not possible to send events from _everyone_ to reflect each balance dilution (ie: balance going down)
 
-        // Not super compliant to ERC20 standard here!
+        // Not compliant to ERC20 standard...
     }
 
     function _burnShares(address _account, uint256 _amountShares) internal {
-    	require(_account != address(0), "FARMTOKENV1: from == 0x00");
+    	require(_account != address(0), "FARMTOKENV1: burn from == 0x00");
 
         uint256 _accountShares = shares[_account];
         require(_amountShares <= _accountShares, "FARMTOKENV1: burn amount exceeds balance");
@@ -198,6 +203,6 @@ abstract contract FarmTokenV1 is IERC20 {
 
         // It's not possible to send events to _everyone_ to reflect each balance credit (ie: balance going up)
 
-        // Not super compliant to ERC20 standard here.
+        // Not compliant to ERC20 standard...
     }
 }

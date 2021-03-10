@@ -46,7 +46,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 	uint256 public performanceToFarmer = 1000;
 	uint256 public baseToTreasury = 100;
 	uint256 public baseToFarmer = 100;
-	uint256 public lastAnnualFeeTime;
 
 	// limits on rebalancing from the farmer, trying to negate errant rebalances
 	uint256 public rebalanceUpLimit = 150; // maximum of a 1.5% gain per rebalance
@@ -71,7 +70,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 	constructor(string memory _nameUnderlying, uint8 _decimalsUnderlying, address _underlying) public FarmTokenV1(_nameUnderlying, _decimalsUnderlying, _underlying) {
 		governance = msg.sender;
 
-		lastAnnualFeeTime = block.timestamp.add(7 days); // start taking the annual fee in the future, after a week
+		lastRebalanceUpTime = block.timestamp;
 	}
 
 	function setGovernance(address payable _new) external {
@@ -156,18 +155,18 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		// determine how many shares this will be
 		uint256 _sharesToMint = getSharesForUnderlying(_amountUnderlying);
 
+		_mintShares(msg.sender, _sharesToMint);
+		// store some important info for this deposit, that will be checked on withdraw/transfer of tokens
+		_storeDepositInfo(msg.sender, _amountUnderlying);
+
+		emit Transfer(address(0), msg.sender, _amountUnderlying);
+		emit Deposit(msg.sender, _amountUnderlying, _referral);
+
 		uint256 _before = IERC20(underlyingContract).balanceOf(address(this));
 		IERC20(underlyingContract).safeTransferFrom(msg.sender, address(this), _amountUnderlying);
 		uint256 _after = IERC20(underlyingContract).balanceOf(address(this));
 		uint256 _total = _after.sub(_before);
 		require(_total >= _amountUnderlying, "FARMTREASURYV1: bad transfer");
-
-		_mintShares(msg.sender, _sharesToMint);
-		emit Transfer(address(0), msg.sender, _amountUnderlying);
-		emit Deposit(msg.sender, _amountUnderlying, _referral);
-
-		// store some important info for this deposit, that will be checked on withdraw/transfer of tokens
-		_storeDepositInfo(msg.sender, _amountUnderlying);
 	}
 
 	function _storeDepositInfo(address _account, uint256 _amountUnderlying) internal {
@@ -229,7 +228,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 					{
 						amountUnderlyingLocked: _total, 
 						timestampDeposit: block.timestamp, 
-						timestampUnlocked: _newLockedTime
+						timestampUnlocked: block.timestamp.add(_newLockedTime)
 					}
 				);
 				userDeposits[_account] = _info;
@@ -265,20 +264,27 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 		uint256 _sharesToBurn = getSharesForUnderlying(_amountUnderlying);
 
-		_burnShares(msg.sender, _sharesToBurn); // this checks that they have this balance
-		
-		IERC20(underlyingContract).safeTransfer(msg.sender, _amountUnderlying);
+		_burnShares(msg.sender, _sharesToBurn); // they must have >= _sharesToBurn, checked here
 
 		emit Transfer(msg.sender, address(0), _amountUnderlying);
 		emit Withdraw(msg.sender, _amountUnderlying);
+
+		// try and catch the more obvious error of hot wallet being depleted, otherwise transfer out withdraw amount of tokens
+		IERC20 _underlying = IERC20(underlyingContract);
+		if (_underlying.balanceOf(address(this)) < _amountUnderlying){
+			revert("Hot wallet balance depleted. Please try smaller withdraw or wait for rebalancing.");
+		}
+		_underlying.safeTransfer(msg.sender, _amountUnderlying);
 	}
 
+	// wait time verification
 	function _verify(address _account, uint256 _amountUnderlyingToSend) internal override {
-		// wait time logic
-		// cannot withdraw/transfer same block as deposit (timestamp would be equal)
-		require(userDeposits[_account].timestampDeposit != block.timestamp, "FARMTREASURYV1: deposit this block");
+		DepositInfo memory _existingInfo = userDeposits[_account];
 
-		uint256 _lockedAmt = getLockedAmount(_account);
+		// cannot withdraw/transfer same block as deposit (timestamp would be equal)
+		require(_existingInfo.timestampDeposit != block.timestamp, "FARMTREASURYV1: deposit this block");
+
+		uint256 _lockedAmt = _getLockedAmount(_existingInfo.amountUnderlyingLocked, _existingInfo.timestampDeposit, _existingInfo.timestampUnlocked);
 		uint256 _balance = balanceOf(_account);
 
 		// require that any funds locked are not leaving the account in question.
@@ -298,7 +304,38 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		// farmer incurred a gain of _amount, add this to the amount being farmed
 		ACTIVELY_FARMED = ACTIVELY_FARMED.add(_amount);
 
-		// assess fee
+		// fee logic
+		_performanceFee(_amount, _farmerRewards);
+		_annualFee(_farmerRewards);
+		// end fee logic
+
+		lastRebalanceUpTime = block.timestamp; // for farmer controls, and also for the annual fee time
+
+		// funds are in the contract and gains are accounted for, now determine if we need to further rebalance the hot wallet up, or can take funds in order to farm
+		// start hot wallet and farmBoss rebalance logic
+		(bool _fundsNeeded, uint256 _amountChange) = _calcHotWallet();
+		_rebalanceHot(_fundsNeeded, _amountChange); // if the hot wallet rebalance fails, revert() the entire function
+		// end logic
+	}
+
+	// this means that the system took a loss, and it needs to be reflected in the next rebalance
+	// only operatable by governance, (large) losses should be extremely rare by good farming practices
+	// this would look like a farmed smart contract getting exploited/hacked, and us not having the necessary insurance for it
+	// possible that some more aggressive IL strategies could also need this function called
+	function rebalanceDown(uint256 _amount, bool _rebalanceHotWallet) external nonReentrant {
+		require(msg.sender == governance, "FARMTREASURYV1: !governance");
+		// require(!paused, "FARMTREASURYV1: paused"); <-- governance can only call this anyways, leave this commented out
+
+		ACTIVELY_FARMED = ACTIVELY_FARMED.sub(_amount);
+
+		if (_rebalanceHotWallet){
+			(bool _fundsNeeded, uint256 _amountChange) = _calcHotWallet();
+			_rebalanceHot(_fundsNeeded, _amountChange);
+			// if the hot wallet rebalance fails, revert() the entire function
+		}
+	}
+
+	function _performanceFee(uint256 _amount, address _farmerRewards) internal {
 		// to mint the required amount of fee shares, solve:
 		/* 
 			ratio:
@@ -340,46 +377,12 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		// do two mint events, in underlying, not shares
 		emit Transfer(address(0), _farmerRewards, getUnderlyingForShares(_sharesToFarmer));
 		emit Transfer(address(0), governance, getUnderlyingForShares(_sharesToTreasury));
-
-		// end fee assessment
-
-		
-
-		// start annual fee logic
-		_annualFee(_farmerRewards);
-		// end annual fee logic
-
-		// funds are in the contract and gains are accounted for, now determine if we need to further rebalance the hot wallet up, or can take funds in order to farm
-		// start hot wallet and farmBoss rebalance logic
-		(bool _fundsNeeded, uint256 _amountChange) = _calcHotWallet();
-		_rebalanceHot(_fundsNeeded, _amountChange);
-		// if the hot wallet rebalance fails, revert() the entire function
-
-		lastRebalanceUpTime = block.timestamp;
-		// end logic
-	}
-
-	// this means that the system took a loss, and it needs to be reflected in the next rebalance
-	// only operatable by governance, (large) losses should be extremely rare by good farming practices
-	// this would not be a loss from ImpLoss-strategies, but from a farmed smart contract getting exploited/hacked, and us not having the necessary insurance for it
-	function rebalanceDown(uint256 _amount, bool _rebalanceHotWallet) external nonReentrant {
-		require(msg.sender == governance, "FARMTREASURYV1: !governance");
-		// require(!paused, "FARMTREASURYV1: paused"); <-- governance can only call this anyways, leave this commented out
-
-		ACTIVELY_FARMED = ACTIVELY_FARMED.sub(_amount);
-
-		if (_rebalanceHotWallet){
-			(bool _fundsNeeded, uint256 _amountChange) = _calcHotWallet();
-			_rebalanceHot(_fundsNeeded, _amountChange);
-			// if the hot wallet rebalance fails, revert() the entire function
-		}
 	}
 
 	// we are taking baseToTreasury + baseToFarmer each year, every time this is called, look when we took fee last, and linearize the fee to now();
 	function _annualFee(address _farmerRewards) internal {
-		uint256 _lastAnnualFeeTime = lastAnnualFeeTime;
+		uint256 _lastAnnualFeeTime = lastRebalanceUpTime;
 
-		// for the first week, we don't take a fee, so just return on this initial case
 		if (_lastAnnualFeeTime >= block.timestamp){
 			return;
 		}
@@ -387,8 +390,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		uint256 _elapsedTime = _lastAnnualFeeTime.sub(block.timestamp);
 
 		uint256 _sharesPossibleFee = totalShares.mul(_elapsedTime).div(365 days);
-		lastAnnualFeeTime = block.timestamp; // set to now, fee will be taken ^
-
 		uint256 _sharesFeeToFarmer = _sharesPossibleFee.mul(baseToFarmer).div(max);
 		uint256 _sharesFeeToTreasury = _sharesPossibleFee.mul(baseToTreasury).div(max);
 
@@ -428,19 +429,17 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 			require(_total >= _amountChange, "FARMTREASURYV1: bad rebalance, hot wallet needs funds!");
 
 			// we took funds from the farmBoss to refill the hot wallet, reflect this in ACTIVELY_FARMED
-			ACTIVELY_FARMED = ACTIVELY_FARMED.sub(_total);
+			ACTIVELY_FARMED = ACTIVELY_FARMED.sub(_amountChange);
 
 			emit Rebalance(_amountChange, 0, block.timestamp);
 		}
 		else {
 			require(farmBoss != address(0), "FARMTREASURYV1: !FarmBoss"); // don't burn funds
 
-			uint256 _before = IERC20(underlyingContract).balanceOf(farmBoss);
 			IERC20(underlyingContract).safeTransfer(farmBoss, _amountChange); // _calcHotWallet() guarantees we have funds here to send
-			uint256 _after = IERC20(underlyingContract).balanceOf(farmBoss);
-			uint256 _total = _after.sub(_before);
 
-			ACTIVELY_FARMED = ACTIVELY_FARMED.add(_total);
+			// we sent more funds for the farmer to farm, reflect this
+			ACTIVELY_FARMED = ACTIVELY_FARMED.add(_amountChange);
 
 			emit Rebalance(0, _amountChange, block.timestamp);
 		}
