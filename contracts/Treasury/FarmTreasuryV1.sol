@@ -263,7 +263,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		_verify(msg.sender, _amountUnderlying);
 
 		uint256 _sharesToBurn = getSharesForUnderlying(_amountUnderlying);
-
 		_burnShares(msg.sender, _sharesToBurn); // they must have >= _sharesToBurn, checked here
 
 		emit Transfer(msg.sender, address(0), _amountUnderlying);
@@ -346,15 +345,15 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 			solved:
 
-			(currentShares / (totalUnderlying - feeAmt) * totalUnderlying) - currentShares = newShares, where newBalanceLessFee = (totalUnderlying - feeAmt)
+			(currentShares / (totalUnderlying - feeAmt) * totalUnderlying) - currentShares = mintShares, where newBalanceLessFee = (totalUnderlying - feeAmt)
 
 			OR:
 
-			--> (currentShares * totalUnderlying / newBalanceLessFee) - currentShares = newShares
+			--> (currentShares * totalUnderlying / newBalanceLessFee) - currentShares = mintShares
 		*/
 
 		uint256 _existingShares = totalShares;
-		uint256 _newBalance = IERC20(underlyingContract).balanceOf(address(this)).add(ACTIVELY_FARMED);
+		uint256 _newBalance = _getTotalUnderlying(); // ie: balance(this) + ACTIVELY_FARMED
 
 		uint256 _performanceToFarmer = performanceToFarmer;
 		uint256 _performanceToTreasury = performanceToTreasury;
