@@ -1,7 +1,6 @@
 // RECOMMEND TESTING WITH:
 // ganache-cli -a 10 -e 1000 -p 7545 -i 5777
 
-
 const VCTreasuryV1 = artifacts.require("VCTreasuryV1");
 const MintableToken = artifacts.require("MintableToken");
 const BN = require('bn.js');
@@ -224,7 +223,7 @@ contract("test treasury setup", async (accounts) => {
 
 	// init a generic token, and mint _amount to _address
 	async function _inittoken(_address, _amount){
-		let token = await MintableToken.new({from: accounts[0]});
+		let token = await MintableToken.new(18, {from: accounts[0]});
 		await token.mint(_address, _amount, {from: accounts[0]});
 
 		return token;

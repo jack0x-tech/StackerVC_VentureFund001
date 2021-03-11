@@ -19,10 +19,10 @@ contract MintableToken is ERC20, ERC20Burnable {
     address public governance;
     mapping(address => bool) public minters;
 
-    constructor () public ERC20("MintableToken", "TEST") {
+    constructor (uint8 _decimals) public ERC20("MintableToken", "TEST") {
     	governance = msg.sender;
     	minters[msg.sender] = true;
-    	_setupDecimals(18);
+    	_setupDecimals(_decimals);
 	}
 
 	function mint(address account, uint amount) external {

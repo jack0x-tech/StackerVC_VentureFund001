@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /*
-
+	Deployment with zero first farms, for deployment on a testnet.
 */
 
 pragma solidity ^0.6.11;
@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./FarmBossV1.sol";
 
-contract FarmBossV1_WBTC is FarmBossV1 {
+contract FarmBossV1_TEST is FarmBossV1 {
 	using SafeERC20 for IERC20;
 	using SafeMath for uint256;
 	using Address for address;
@@ -21,12 +21,8 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 	constructor(address payable _governance, address _treasury, address _underlying) public FarmBossV1(_governance, _treasury, _underlying){
 	}
 
+	// no first farms, this is just for testing 
 	function _initFirstFarms() internal override {
-
-		/*
-			For our intro WBTC strategies, we will be utilizing MakerDAO to generate DAI with our WBTC. We will then invest the DAI in a number of Curve.finance/yEarn
-			strategies, as we do with our USDC strategies.
-		*/
-
+		return;
 	}
 }

@@ -55,15 +55,15 @@ abstract contract FarmTokenV1 is IERC20 {
 
     // 1 stackToken = 1 underlying token
     function totalSupply() external override view returns (uint256){
-    	_getTotalUnderlying();
+    	return _getTotalUnderlying();
     }
 
     function totalUnderlying() external view returns (uint256){
-    	_getTotalUnderlying();
+    	return _getTotalUnderlying();
     }
 
     function balanceOf(address _account) public override view returns (uint256){
-    	getUnderlyingForShares(_sharesOf(_account));
+    	return getUnderlyingForShares(_sharesOf(_account));
     }
 
     // transfer tokens, not shares
@@ -100,8 +100,8 @@ abstract contract FarmTokenV1 is IERC20 {
     }
 
     // shares of _account
-    function sharesOf(address _account) public view returns (uint256) {
-    	_sharesOf(_account);
+    function sharesOf(address _account) external view returns (uint256) {
+    	return _sharesOf(_account);
     }
 
     // how many shares for _amount of underlying?
@@ -177,7 +177,6 @@ abstract contract FarmTokenV1 is IERC20 {
     	require(_recipient != address(0), "FARMTOKENV1: to == 0x00");
 
         totalShares = totalShares.add(_amountShares);
-
         shares[_recipient] = shares[_recipient].add(_amountShares);
 
         // NOTE: we're not emitting a Transfer event from the zero address here

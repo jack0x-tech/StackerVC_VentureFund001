@@ -25,7 +25,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 	using SafeMath for uint256;
 	using Address for address;
 
-	mapping(address => DepositInfo) userDeposits;
+	mapping(address => DepositInfo) public userDeposits;
 
 	struct DepositInfo {
 		uint256 amountUnderlyingLocked;
@@ -292,36 +292,41 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 	// this means that we made a GAIN, due to standard farming gains
 	// operaratable by farmBoss, this is standard operating procedure, farmers can only report gains
-	function rebalanceUp(uint256 _amount, address _farmerRewards) external nonReentrant {
+	function rebalanceUp(uint256 _amount, address _farmerRewards) external nonReentrant returns (bool, uint256) {
 		require(msg.sender == farmBoss, "FARMTREASURYV1: !farmBoss");
 		require(!paused, "FARMTREASURYV1: paused");
 
-		// check the farmer limits on rebalance waits & amount that was earned from farming
-		require(block.timestamp.sub(lastRebalanceUpTime) >= rebalanceUpWaitTime, "FARMTREASURYV1: <rebalanceUpWaitTime");
-		require(ACTIVELY_FARMED.mul(rebalanceUpLimit).div(max) >= _amount, "FARMTREASURYV1 _amount > rebalanceUpLimit");
+		// fee logic & profit recording
+		// check farmer limits on rebalance wait time for earning reportings. if there is no _amount reported, we don't take any fees and skip these checks
+		// we should always allow pure hot wallet rebalances, however earnings needs some checks and restrictions
+		if (_amount > 0){
+			require(block.timestamp.sub(lastRebalanceUpTime) >= rebalanceUpWaitTime, "FARMTREASURYV1: <rebalanceUpWaitTime");
+			require(ACTIVELY_FARMED.mul(rebalanceUpLimit).div(max) >= _amount, "FARMTREASURYV1 _amount > rebalanceUpLimit");
+			// farmer incurred a gain of _amount, add this to the amount being farmed
+			ACTIVELY_FARMED = ACTIVELY_FARMED.add(_amount);
+			_performanceFee(_amount, _farmerRewards);
+			_annualFee(_farmerRewards);
 
-		// farmer incurred a gain of _amount, add this to the amount being farmed
-		ACTIVELY_FARMED = ACTIVELY_FARMED.add(_amount);
-
-		// fee logic
-		_performanceFee(_amount, _farmerRewards);
-		_annualFee(_farmerRewards);
-		// end fee logic
-
-		lastRebalanceUpTime = block.timestamp; // for farmer controls, and also for the annual fee time
+			// for farmer controls, and also for the annual fee time
+			// only update this if there is a reported gain, otherwise this is just a hot wallet rebalance, and we should always allow these
+			lastRebalanceUpTime = block.timestamp; 
+		}
+		// end fee logic & profit recording
 
 		// funds are in the contract and gains are accounted for, now determine if we need to further rebalance the hot wallet up, or can take funds in order to farm
 		// start hot wallet and farmBoss rebalance logic
 		(bool _fundsNeeded, uint256 _amountChange) = _calcHotWallet();
 		_rebalanceHot(_fundsNeeded, _amountChange); // if the hot wallet rebalance fails, revert() the entire function
 		// end logic
+
+		return (_fundsNeeded, _amountChange); // in case we need them, FE simulations and such
 	}
 
 	// this means that the system took a loss, and it needs to be reflected in the next rebalance
 	// only operatable by governance, (large) losses should be extremely rare by good farming practices
 	// this would look like a farmed smart contract getting exploited/hacked, and us not having the necessary insurance for it
 	// possible that some more aggressive IL strategies could also need this function called
-	function rebalanceDown(uint256 _amount, bool _rebalanceHotWallet) external nonReentrant {
+	function rebalanceDown(uint256 _amount, bool _rebalanceHotWallet) external nonReentrant returns (bool, uint256) {
 		require(msg.sender == governance, "FARMTREASURYV1: !governance");
 		// require(!paused, "FARMTREASURYV1: paused"); <-- governance can only call this anyways, leave this commented out
 
@@ -329,46 +334,31 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 		if (_rebalanceHotWallet){
 			(bool _fundsNeeded, uint256 _amountChange) = _calcHotWallet();
-			_rebalanceHot(_fundsNeeded, _amountChange);
-			// if the hot wallet rebalance fails, revert() the entire function
+			_rebalanceHot(_fundsNeeded, _amountChange); // if the hot wallet rebalance fails, revert() the entire function
+
+			return (_fundsNeeded, _amountChange); // in case we need them, FE simulations and such
 		}
+
+		return (false, 0);
 	}
 
 	function _performanceFee(uint256 _amount, address _farmerRewards) internal {
-		// to mint the required amount of fee shares, solve:
-		/* 
-			ratio:
-
-			    	currentShares 			  newShares		
-			-------------------------- : --------------------, where newShares = (currentShares + mintShares)
-			(totalUnderlying - feeAmt) 		totalUnderlying
-
-			solved:
-
-			(currentShares / (totalUnderlying - feeAmt) * totalUnderlying) - currentShares = mintShares, where newBalanceLessFee = (totalUnderlying - feeAmt)
-
-			OR:
-
-			--> (currentShares * totalUnderlying / newBalanceLessFee) - currentShares = mintShares
-		*/
 
 		uint256 _existingShares = totalShares;
-		uint256 _newBalance = _getTotalUnderlying(); // ie: balance(this) + ACTIVELY_FARMED
+		uint256 _balance = _getTotalUnderlying();
 
-		uint256 _performanceToFarmer = performanceToFarmer;
-		uint256 _performanceToTreasury = performanceToTreasury;
-		uint256 _performanceTotal = _performanceToFarmer.add(_performanceToTreasury);
+		uint256 _performanceToFarmerUnderlying = _amount.mul(performanceToFarmer).div(max);
+		uint256 _performanceToTreasuryUnderlying = _amount.mul(performanceToTreasury).div(max);
+		uint256 _performanceTotalUnderlying = _performanceToFarmerUnderlying.add(_performanceToTreasuryUnderlying);
 
-		uint256 _performanceUnderlying = _amount.mul(_performanceTotal).div(max);
-		uint _newBalanceLessFee = _newBalance.sub(_performanceUnderlying);
+		if (_performanceTotalUnderlying == 0){
+			return;
+		}
 
-		uint256 _newShares = _existingShares
-								.mul(_newBalance)
-								.div(_newBalanceLessFee)
-								.sub(_existingShares);
+		uint256 _sharesToMint = _underlyingFeeToShares(_performanceTotalUnderlying, _balance, _existingShares);
 
-		uint256 _sharesToFarmer = _newShares.mul(_performanceToFarmer).div(_performanceTotal);
-		uint256 _sharesToTreasury = _newShares.mul(_performanceToTreasury).div(_performanceTotal);
+		uint256 _sharesToFarmer = _sharesToMint.mul(_performanceToFarmerUnderlying).div(_performanceTotalUnderlying); // by the same ratio
+		uint256 _sharesToTreasury = _sharesToMint.sub(_sharesToFarmer);
 
 		_mintShares(_farmerRewards, _sharesToFarmer);
 		_mintShares(governance, _sharesToTreasury);
@@ -381,23 +371,53 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 	// we are taking baseToTreasury + baseToFarmer each year, every time this is called, look when we took fee last, and linearize the fee to now();
 	function _annualFee(address _farmerRewards) internal {
 		uint256 _lastAnnualFeeTime = lastRebalanceUpTime;
-
 		if (_lastAnnualFeeTime >= block.timestamp){
 			return;
 		}
 
-		uint256 _elapsedTime = _lastAnnualFeeTime.sub(block.timestamp);
+		uint256 _elapsedTime = block.timestamp.sub(_lastAnnualFeeTime);
+		uint256 _existingShares = totalShares;
+		uint256 _balance = _getTotalUnderlying();
 
-		uint256 _sharesPossibleFee = totalShares.mul(_elapsedTime).div(365 days);
-		uint256 _sharesFeeToFarmer = _sharesPossibleFee.mul(baseToFarmer).div(max);
-		uint256 _sharesFeeToTreasury = _sharesPossibleFee.mul(baseToTreasury).div(max);
+		uint256 _annualPossibleUnderlying = _balance.mul(_elapsedTime).div(365 days);
+		uint256 _annualToFarmerUnderlying = _annualPossibleUnderlying.mul(baseToFarmer).div(max);
+		uint256 _annualToTreasuryUnderlying = _annualPossibleUnderlying.mul(baseToFarmer).div(max);
+		uint256 _annualTotalUnderlying = _annualToFarmerUnderlying.add(_annualToTreasuryUnderlying);
 
-		_mintShares(_farmerRewards, _sharesFeeToFarmer);
-		_mintShares(governance, _sharesFeeToTreasury);
+		if (_annualTotalUnderlying == 0){
+			return;
+		}
 
-		// two mint events, converting underlying to shares
-		emit Transfer(address(0), _farmerRewards, getUnderlyingForShares(_sharesFeeToFarmer));
-		emit Transfer(address(0), governance, getUnderlyingForShares(_sharesFeeToTreasury));
+		uint256 _sharesToMint = _underlyingFeeToShares(_annualTotalUnderlying, _balance, _existingShares);
+
+		uint256 _sharesToFarmer = _sharesToMint.mul(_annualToFarmerUnderlying).div(_annualTotalUnderlying); // by the same ratio
+		uint256 _sharesToTreasury = _sharesToMint.sub(_sharesToFarmer);
+
+		_mintShares(_farmerRewards, _sharesToFarmer);
+		_mintShares(governance, _sharesToTreasury);
+
+		// do two mint events, in underlying, not shares
+		emit Transfer(address(0), _farmerRewards, getUnderlyingForShares(_sharesToFarmer));
+		emit Transfer(address(0), governance, getUnderlyingForShares(_sharesToTreasury));
+
+	}
+
+	function _underlyingFeeToShares(uint256 _totalFeeUnderlying, uint256 _balance, uint256 _existingShares) pure internal returns (uint256 _sharesToMint){
+		// to mint the required amount of fee shares, solve:
+		/* 
+			ratio:
+
+			    	currentShares 			  newShares		
+			-------------------------- : --------------------, where newShares = (currentShares + mintShares)
+			(totalUnderlying - feeAmt) 		totalUnderlying
+
+			solved:
+			---> (currentShares / (totalUnderlying - feeAmt) * totalUnderlying) - currentShares = mintShares, where newBalanceLessFee = (totalUnderlying - feeAmt)
+		*/
+		return _existingShares
+				.mul(_balance)
+				.div(_balance.sub(_totalFeeUnderlying))
+				.sub(_existingShares);
 	}
 
 	function _calcHotWallet() internal view returns (bool _fundsNeeded, uint256 _amountChange) {

@@ -19,6 +19,8 @@ contract FarmBossV1_USDC is FarmBossV1 {
 	using Address for address;
 
 	// breaking some constants out here, getting stack ;) issues
+
+	// CRV FUNCTIONS
 	bytes4 constant private add_liquidity_2 = 0x0b4c7e4d;
 	bytes4 constant private add_liquidity_3 = 0x4515cef3;
 	bytes4 constant private add_liquidity_4 = 0x029b2f34;
@@ -34,6 +36,12 @@ contract FarmBossV1_USDC is FarmBossV1 {
 	// YEARN FUNCTIONS
 	bytes4 constant private deposit = 0xb6b55f25; // deposit(uint256 _amount)
 	bytes4 constant private withdraw = 0x2e1a7d4d; // withdraw(uint256 _shares)
+
+	// COMP FUNCTIONS
+	bytes4 constant private mint_ctoken = 0xa0712d68; // mint(uint256 mintAmount)
+	bytes4 constant private redeem_ctoken = 0xdb006a75; // redeem(uint256 redeemTokens)
+	bytes4 constant private claim_COMP = 0x1c3db2e0; // claimComp(address holder, address[] cTokens)
+	bytes4 constant private swap_erc20_1inch = 0x90411a32; // swap(address,address,address,address,address,uint256,uint256,uint256,uint256,address,bytes,uint256,uint256,uint256,bytes)
 
 	constructor(address payable _governance, address _treasury, address _underlying) public FarmBossV1(_governance, _treasury, _underlying){
 	}
@@ -194,11 +202,6 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		whitelist[_yearnUSDC][deposit] = true;
 		whitelist[_yearnUSDC][withdraw] = true;
 		////////////// END ALLOW yEarn USDC //////////////
-
-		bytes4 mint_ctoken = 0xa0712d68; // mint(uint256 mintAmount)
-		bytes4 redeem_ctoken = 0xdb006a75; // redeem(uint256 redeemTokens)
-		bytes4 claim_COMP = 0x1c3db2e0; // claimComp(address holder, address[] cTokens)
-		bytes4 swap_erc20_1inch = 0x90411a32; // swap(address,address,address,address,address,uint256,uint256,uint256,uint256,address,bytes,uint256,uint256,uint256,bytes)
 
 		////////////// ALLOW Compound USDC //////////////
 		address _compUSDC = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
