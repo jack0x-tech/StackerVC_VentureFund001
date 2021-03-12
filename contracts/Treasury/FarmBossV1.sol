@@ -21,6 +21,8 @@ abstract contract FarmBossV1 {
 	mapping(address => mapping(bytes4 => bool)) public whitelist; // contracts -> mapping (functionSig -> allowed)
 	mapping(address => bool) public farmers;
 
+	bytes4 constant private FALLBACK_FN_SIG = 0xffffffff;
+
 	// for passing to functions more cleanly
 	struct WhitelistData {
 		address account;
@@ -50,8 +52,6 @@ abstract contract FarmBossV1 {
 	event RmApproval(address _token, address _contract);
 
 	event ExecuteStatus(bool _success, bytes _returnData);
-
-	event CALLING(address _target, uint256 _value, bytes4 _fnSig);
 
 	constructor(address payable _governance, address _treasury, address _underlying) public {
 		governance = _governance;
@@ -132,13 +132,13 @@ abstract contract FarmBossV1 {
 		}
 	}
 
-	function govExecute(address payable _target, uint256 _value, bytes calldata _data) external returns (bool){
+	function govExecute(address payable _target, uint256 _value, bytes calldata _data) external returns (bool, bytes memory){
 		require(msg.sender == governance, "FARMBOSSV1: !governance");
 
 		 return _execute(_target, _value, _data);
 	}
 
-	function farmerExecute(address payable _target, uint256 _value, bytes calldata _data) external returns (bool){
+	function farmerExecute(address payable _target, uint256 _value, bytes calldata _data) external returns (bool, bytes memory){
 		require(farmers[msg.sender], "FARMBOSSV1: !farmer");
 		
 		require(_checkContractAndFn(_target, _value, _data), "FARMBOSSV1: target.fn() not allowed. ask DAO for approval.");
@@ -159,9 +159,8 @@ abstract contract FarmBossV1 {
 		_value; // squelch, we don't check value in V1
 
 		bytes4 _fnSig;
-
 		if (_data.length < 4){ // we are calling a payable function, or the data is otherwise invalid (need 4 bytes for any fn call)
-			_fnSig = 0x00000000;
+			_fnSig = FALLBACK_FN_SIG;
 		}
 		else { // we are calling a normal function, get the function signature from the calldata (first 4 bytes of calldata)
 
@@ -186,12 +185,20 @@ abstract contract FarmBossV1 {
 	}
 
 	// call arbitrary contract & function, forward all gas, return success? & data
-	function _execute(address payable _target, uint256 _value, bytes calldata _data) internal returns (bool){
-		(bool _success, bytes memory _returnData) = _target.call{value: _value}(_data);
+	function _execute(address payable _target, uint256 _value, bytes memory _data) internal returns (bool, bytes memory){
+		bool _success;
+		bytes memory _returnData;
+
+		if (_data.length == 4 && _data[0] == 0xff && _data[1] == 0xff && _data[2] == 0xff && _data[3] == 0xff){ // check if fallback function is invoked, send w/ no data
+			(_success, _returnData) = _target.call{value: _value}("");
+		}
+		else {
+			(_success, _returnData) = _target.call{value: _value}(_data);
+		}
 
 		emit ExecuteStatus(_success, _returnData);
 
-		return _success;
+		return (_success, _returnData);
 	}
 
 	// we can call this function from farmer/govExecute, but let's make it easy
