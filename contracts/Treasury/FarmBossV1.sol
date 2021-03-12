@@ -51,6 +51,8 @@ abstract contract FarmBossV1 {
 
 	event ExecuteStatus(bool _success, bytes _returnData);
 
+	event CALLING(address _target, uint256 _value, bytes4 _fnSig);
+
 	constructor(address payable _governance, address _treasury, address _underlying) public {
 		governance = _governance;
 		treasury = _treasury;
@@ -63,7 +65,8 @@ abstract contract FarmBossV1 {
 		_initFirstFarms();
 	}
 
-	
+	receive() payable external {}
+
 	// function stub, this needs to be implemented in a contract which inherits this for a valid deployment
     // some fixed logic to set up the first farmers, farms, whitelists, approvals, etc. future farms will need to be approved by governance
 	// called on init only
@@ -74,6 +77,10 @@ abstract contract FarmBossV1 {
 		require(msg.sender == governance, "FARMBOSSV1: !governance");
 
 		governance = _new;
+	}
+
+	function getWhitelist(address _contract, bytes4 _fnSig) external view returns (bool){
+		return whitelist[_contract][_fnSig];
 	}
 
 	function changeFarmers(address[] calldata _newFarmers, address[] calldata _rmFarmers) external {
@@ -152,13 +159,24 @@ abstract contract FarmBossV1 {
 		_value; // squelch, we don't check value in V1
 
 		bytes4 _fnSig;
-		if (_data.length < 4){ // we are calling a payable function
+
+		if (_data.length < 4){ // we are calling a payable function, or the data is otherwise invalid (need 4 bytes for any fn call)
 			_fnSig = 0x00000000;
 		}
-		else { // we are calling a normal function, get the function signature from the calldata
-			_fnSig = abi.decode(_data[:4], (bytes4)); // truncates all but the first 4 bytes, will be the function sig
+		else { // we are calling a normal function, get the function signature from the calldata (first 4 bytes of calldata)
+
+			//////////////////
+			// NOTE: here we must use assembly in order to covert bytes -> bytes4
+			// See consensys code for bytes -> bytes32: https://github.com/GNSPS/solidity-bytes-utils/blob/master/contracts/BytesLib.sol
+			//////////////////
+
+			bytes memory _fnSigBytes = bytes(_data[0:4]);
+			assembly {
+	            _fnSig := mload(add(add(_fnSigBytes, 0x20), 0))
+	        }
+			// _fnSig = abi.decode(bytes(_data[0:4]), (bytes4)); // NOTE: does not work, open solidity issue: https://github.com/ethereum/solidity/issues/9170
 		}
-		
+
 		bytes4 _transferSig = 0xa9059cbb;
 		bytes4 _approveSig = 0x095ea7b3;
 		if (_fnSig == _transferSig || _fnSig == _approveSig || !whitelist[_target][_fnSig]){
@@ -168,7 +186,7 @@ abstract contract FarmBossV1 {
 	}
 
 	// call arbitrary contract & function, forward all gas, return success? & data
-	function _execute(address payable _target, uint256 _value, bytes memory _data) internal returns (bool){
+	function _execute(address payable _target, uint256 _value, bytes calldata _data) internal returns (bool){
 		(bool _success, bytes memory _returnData) = _target.call{value: _value}(_data);
 
 		emit ExecuteStatus(_success, _returnData);
