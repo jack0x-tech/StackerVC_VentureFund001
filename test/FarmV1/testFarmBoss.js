@@ -139,7 +139,4 @@ contract("test FarmTreasuryV1", async (accounts) => {
 		await _farmboss.farmerExecute(USER_2, web3.utils.toWei("1","ether"), "0x", {from: FARMER});
 		assert.equal(web3.utils.toWei("1004", "ether"), (await web3.eth.getBalance(USER_2)).toString());
 	});
-
-
-
 });

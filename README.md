@@ -6,7 +6,7 @@ Please make sure that when running `truffle version` you get at least the follow
 
 ```
 Truffle v5.1.53 (core: 5.1.53)
-Solidity v0.5.16 (solc-js)
+Solidity v0.6.11 (solc-js)
 Node v10.18.0
 Web3.js v1.2.9
 ```
@@ -14,9 +14,26 @@ Web3.js v1.2.9
 You should be now good to go.
 
 ### Testing these contracts:
-To test these contracts, you can run unit or integration tests (yEarn integration). Rename the correct `migrations_XXX` folders to `migrations` and then run `truffle migrate`. They will need different ganache-cli instances, detailed more in their separate READMEs.
+Please see the tests for VCTreasuryV1 and FarmTreasuryV1 in their respective folders.
 
-TODO: work on `truffle test` implementation over `truffle migrate`. This is the proper way to run tests, but had some compatibility issues earlier.
+### FarmTreasuryV1 (./Treasury/FarmTreasuryV1.sol), FarmTokenV1, FarmBossV1
+
+This contract allows for a trust-minimized, decentralized "farming" fund. These contracts will take a users ETH, WBTC, and USDC, and issue a rebalance token called stackETH, stackUSDC, or stackWBTC. 1 stackToken = 1 underlyingToken, due to a rebase mechanism.
+
+The rebase mechanism was forked from LidoDAO's stETH (or liquid staked ETH2.0). Their audited contacts can be found here: https://github.com/lidofinance/lido-dao/blob/master/contracts/0.4.24/StETH.sol . Our contracts are found in FarmTokenV1, which is inherited by FarmTreasuryV1. These have full ERC20 functionality too.
+
+The Treasury contract implements a fee structure, which will be a 2% yearly base, and 20% performance fee on any gains. These fees are split between the DAO treasury (governance), and the farmer. The Treasury contract also implements a hot wallet, which services withdraws instantly. However if this wallet is depleted, then a rebalance must occur before withdraws can be serviced.
+
+There is a time-lock on any funds deposited. Initially this looks like a linear decrease from 100% locked initially, 50% locked after 7 days, and 0% locked after the 14 days. This can be modified or removed, but is initially left in place to discourage "rebase sniping". This is an attack where you deposit just in time for a reabase, and withdraw directly after, meaning you get a full reward however do not put your funds to use at all.
+
+The FarmBoss contract does the rebasing and the farming. The DAO governance can whitelist token approvals and smart contracts + specific functions that "farmer" accounts are allowed to call. And example would be: you are allowed to add liquidity to a specific Curve.fi contract, you may deposit/withdraw Curve LP tokens to yEarn Vaults, and you may remove liquidity from the same Curve.fi contracts. All the token approvals and whitelisting must be done by governance, and then the farmer is allowed to use the strategy as outlined.
+
+There are limits on the frequency and amount of "gains" (rebalanceUp) that the farmers can report, for security reasons. Only DAO governance is allowed to report a loss (rebalanceDown), and these should be rare with proper farming techniques.
+
+In FarmBossV1_TOKEN, we whitelist some initial strategies and contracts we will engage with:
+-- USDC, mostly yEarn & Curve
+-- ETH, AlphaHomora v1/v2, Rari Rotation Vault, yEarn, Curve
+-- WBTC, MakerDao CDPs, ???
 
 ### VCTreasuryV1 (./Treasury/VCTreasuryV1.sol)
 
@@ -83,13 +100,6 @@ This function updates the investment utilization after a proposed investment. If
 
 #### emergencyEscape
 This emergency function allows an escape of an asset. This is to allows for a safety valve in-case the fund "locks up" or in other words, where normal operations of the fund become impossible due to smart contract error or some sort of bug locking funds into the contract. Note, that there are some requirements into the function and it cannot be used to "rug" individuals of their money. The fund must be closed via normal operation (not killed), and this function only sends escaped funds to the "treasury" address, which will be decentrally controlled by STACK holders.
-
-
-### STACK Token (./Token/STACKToken.sol)
-
-This contract inherits from the OpenZeppelin standard token contracts, as found here: https://docs.openzeppelin.com/contracts/2.x/api/token/erc20
-
-We add burn functionality (ERC20Burnable from OpenZeppelin), and a way to allow different addresses/contracts to mint tokens. This minting functionality will be used in our Gauge contracts in order to distribute STACK tokens.
 
 ### Gauge Distribution 1 (./Token/GaugeD1.sol)
 
@@ -173,37 +183,25 @@ Gets weight of a user (_acceptToken_ deposited times STACK distribution bonus).
 #### getUserBalance()
 Total _acceptToken_ deposited by a users into the contract.
 
-### yEarn Vault Gauge Bridge (./Token/VaultGaugeBridge.sol)
-This contract allows users to deposit their ERC20/ETH into yEarn to receive interest, and then deposit those yTokens into a gauge to commit to the Stacker.vc Fund #1. This bridge contract allows a user to do this in a single action (usually would take two). The user can also withdraw in a similar way, from Gauge -> yEarn -> ERC20 base tokens (if they don't want to withdraw the yToken from a Gauge, but instead withdraw the underlying).
+### AlphaHomora Vault Gauge Bridge (./Token/VaultGaugeBridge.sol)
+This contract allows users to deposit their ERC20/ETH into AlphaHomoraV2 to receive interest, and then deposit those yTokens into a gauge to commit to the Stacker.vc Fund #1. This bridge contract allows a user to do this in a single action (usually would take two). The user can also withdraw in a similar way, from Gauge -> AH -> ERC20 base tokens (if they don't want to withdraw the yToken from a Gauge, but instead withdraw the underlying).
 
-Users can deposit yTokens directly to the Gauge contract, and bypass this Bridge contract. They can also withdraw yTokens directly from a Gauge, and bypass this contract on a withdraw. It's simply to make the UI better, less fees & waiting!
-
-#### WETH_VAULT
-Address of the yEarn WETH vault. This is used in order to route the fallback function of the bridge.
+Users can deposit ibETH directly to the Gauge contract, and bypass this Bridge contract. They can also withdraw directly from a Gauge, and bypass this contract on a withdraw. It's simply to make the UI better, less fees & waiting!
 
 #### governance
-This user can set up new bridges for additional yEarn coins that are to be accepted.
+DAO agent, permissioned user.
 
 #### receive() (fallback function)
-On receipt of ETH, act as if the depositor is committing to the Stacker.vc fund. Unless this is the yEarn vault, in which case this is just normal behavior of the contract, so don't do anything.
+On receipt of ETH, act as if the depositor is committing to the Stacker.vc fund.
 
 #### setGovernance()
 Permissioned action to change the governance account.
 
-#### newBridge()
-Permissioned action to add a new deposit bridge from yEarn -> STACK Gauge.
-
-#### depositBridge()
-Deposits an _amount_ of token into yEarn _vault_ of behalf of the calling user. Then deposits the received yTokens into _commit_ (true = hard-commit, false = soft-commit).
-
 #### depositBridgeETH()
-Similar to the above function, but takes an initial send of ETH, deposits into yEarn, and then deposits yETH into the Gauge.
-
-#### withdrawBridge()
-Withdraws a soft-commit from the Gauge, and then withdraws the underlying token from yEarn. Then sends this underlying token back to the user.
+Takes an initial send of ETH, deposits into AH, and then deposits ibETH into the Gauge.
 
 #### withdrawBridgeETH()
-Similar to the above function, but withdraws from the yETH Gauge contract and receives ETH from the yEarn yETH vault. 
+Withdraws from gauge and receives ETH from the ibETH contract, forwards to user. 
 
 #### withdrawGauge() internal
 A helper function to withdraw from a gauge contract.
@@ -214,4 +212,4 @@ A helper function to deposit into a gauge contract.
 ### STACK Liquidity Provider Gauge (./Token/LPGauge.sol)
 This a simplied Gauge contract from the above Gauge contract. This doesn't have anything to do with the VC Fund #1 committment scheme, but allows users to be given a bonus for providing liquidity to the STACK token on Uniswap and Balancer markets. Sufficient liquidity for trading is very important for a fledgling project, and we seek to incentivize providing liquidity via this contract. 
 
-Users that provide liquidity to Uniswap STACK<>USDT, Uniswap STACK<>ETH, and Balancer STACK 80% <> ETH 20% will be rewarded by these contracts. Users must deposit their LP Tokens in this contract to be rewarded.
+Users that provide liquidity to Uniswap STACK<>ETH will be to deposit LP Tokens. Users must deposit their LP Tokens in this contract to be rewarded.
