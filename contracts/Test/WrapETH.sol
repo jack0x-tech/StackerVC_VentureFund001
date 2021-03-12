@@ -16,9 +16,9 @@ contract WrapETH is ERC20, ReentrancyGuard, IAlphaHomora_ibETH {
 	using Address for address;
     using SafeMath for uint256;
 
-    uint256 public constant exchange_rate = 777;
+    uint256 public constant exchange_rate = 1;
 
-    constructor () public ERC20("Test ibETH", "ibETH") { 
+    constructor () public ERC20("Test WETH", "testWETH") { 
     	_setupDecimals(18);
     }
 
@@ -28,7 +28,6 @@ contract WrapETH is ERC20, ReentrancyGuard, IAlphaHomora_ibETH {
 
     function deposit() payable public override nonReentrant {
     	uint256 _issue = msg.value.mul(exchange_rate);
-
     	_mint(msg.sender, _issue);
     }
 
@@ -37,5 +36,4 @@ contract WrapETH is ERC20, ReentrancyGuard, IAlphaHomora_ibETH {
     	uint256 _send = amount.div(exchange_rate);
     	msg.sender.transfer(_send);
     }
-
 }

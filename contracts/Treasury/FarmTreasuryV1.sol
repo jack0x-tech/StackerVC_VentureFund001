@@ -149,9 +149,17 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		require(_amountUnderlying > 0, "FARMTREASURYV1: amount == 0");
 		require(!paused && !pausedDeposits, "FARMTREASURYV1: paused");
 
-		// paused logic
-		// deposits paused, but other functions live
+		_deposit(_amountUnderlying, _referral);
 
+		IERC20 _underlying = IERC20(underlyingContract);
+		uint256 _before = _underlying.balanceOf(address(this));
+		_underlying.safeTransferFrom(msg.sender, address(this), _amountUnderlying);
+		uint256 _after = _underlying.balanceOf(address(this));
+		uint256 _total = _after.sub(_before);
+		require(_total >= _amountUnderlying, "FARMTREASURYV1: bad transfer");
+	}
+
+	function _deposit(uint256 _amountUnderlying, address _referral) internal {
 		// determine how many shares this will be
 		uint256 _sharesToMint = getSharesForUnderlying(_amountUnderlying);
 
@@ -161,12 +169,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 		emit Transfer(address(0), msg.sender, _amountUnderlying);
 		emit Deposit(msg.sender, _amountUnderlying, _referral);
-
-		uint256 _before = IERC20(underlyingContract).balanceOf(address(this));
-		IERC20(underlyingContract).safeTransferFrom(msg.sender, address(this), _amountUnderlying);
-		uint256 _after = IERC20(underlyingContract).balanceOf(address(this));
-		uint256 _total = _after.sub(_before);
-		require(_total >= _amountUnderlying, "FARMTREASURYV1: bad transfer");
 	}
 
 	function _storeDepositInfo(address _account, uint256 _amountUnderlying) internal {
@@ -215,7 +217,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 						 1 BTC remaining, with remaining wait period of 1 week
 						 ...
 						 (7 BTC * 2 weeks + 1 BTC * 1 week) / 8 BTC = 1.875 weeks
-
 			*/
 			else {
 				uint256 _lockedAmtTime = _lockedAmt.mul(_existingInfo.timestampUnlocked.sub(block.timestamp));
@@ -260,20 +261,23 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		require(_amountUnderlying > 0, "FARMTREASURYV1: amount == 0");
 		require(!paused, "FARMTREASURYV1: paused");
 
+		_withdraw(_amountUnderlying);
+
+		IERC20(underlyingContract).safeTransfer(msg.sender, _amountUnderlying);
+	}
+
+	function _withdraw(uint256 _amountUnderlying) internal {
 		_verify(msg.sender, _amountUnderlying);
+		// try and catch the more obvious error of hot wallet being depleted, otherwise proceed
+		if (IERC20(underlyingContract).balanceOf(address(this)) < _amountUnderlying){
+			revert("Hot wallet balance depleted. Please try smaller withdraw or wait for rebalancing.");
+		}
 
 		uint256 _sharesToBurn = getSharesForUnderlying(_amountUnderlying);
 		_burnShares(msg.sender, _sharesToBurn); // they must have >= _sharesToBurn, checked here
 
 		emit Transfer(msg.sender, address(0), _amountUnderlying);
 		emit Withdraw(msg.sender, _amountUnderlying);
-
-		// try and catch the more obvious error of hot wallet being depleted, otherwise transfer out withdraw amount of tokens
-		IERC20 _underlying = IERC20(underlyingContract);
-		if (_underlying.balanceOf(address(this)) < _amountUnderlying){
-			revert("Hot wallet balance depleted. Please try smaller withdraw or wait for rebalancing.");
-		}
-		_underlying.safeTransfer(msg.sender, _amountUnderlying);
 	}
 
 	// wait time verification
