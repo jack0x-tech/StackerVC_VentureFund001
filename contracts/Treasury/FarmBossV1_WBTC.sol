@@ -18,6 +18,19 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 	using SafeMath for uint256;
 	using Address for address;
 
+	bytes4 constant private mint_ctoken = 0xa0712d68; // mint(uint256 mintAmount)
+	bytes4 constant private enter_markets = 0xc2998238; // enterMarkets(address[] cTokens)
+	bytes4 constant private exit_market = 0xede4edd0; // exitMarket(address)
+	
+	bytes4 constant private redeem_ctoken = 0xdb006a75; // redeem(uint256 redeemTokens)
+	bytes4 constant private claim_COMP = 0x1c3db2e0; // claimComp(address holder, address[] cTokens)
+
+	bytes4 constant private borrow = 0xc5ebeaec; // borrow(uint256 amount)
+	bytes4 constant private repay_behalf = 0x9f35c3d5; //repayBehalf(address)
+
+	bytes4 constant private deposit_eth = 0x2d2da806; // depositETH(address)
+	bytes4 constant private withdraw_eth = 0xf14210a6; // withdrawETH(uint256)
+
 	constructor(address payable _governance, address _treasury, address _underlying) public FarmBossV1(_governance, _treasury, _underlying){
 	}
 
@@ -27,6 +40,30 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 			For our intro WBTC strategies, we will be utilizing MakerDAO to generate DAI with our WBTC. We will then invest the DAI in a number of Curve.finance/yEarn
 			strategies, as we do with our USDC strategies.
 		*/
+
+		address _compWBTC = 0xC11b1268C1A384e55C48c2391d8d480264A3A7F4;
+		address _compETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
+		address _comptroller = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
+		address _compEthRepayHelper = 0xf859A1AD94BcF445A406B892eF0d3082f4174088;
+
+		// stackVaults
+		address _stackETH = 0x0572bf36dBD8BBF41ACfaA74139B20ED8a7C0366;
+
+		IERC20(underlying).safeApprove(0xC11b1268C1A384e55C48c2391d8d480264A3A7F4, MAX_UINT256);
+		// mint/redeem compBTC
+		whitelist[_compWBTC][mint_ctoken] = true;
+		whitelist[_compWBTC][redeem_ctoken] = true;
+		// allow collateral & mint COMP
+		whitelist[_comptroller][enter_markets] = true;
+		whitelist[_comptroller][exit_market] = true;
+		whitelist[_comptroller][claim_COMP] = true;
+		// borrow and repay, need to use helper repay contract
+		whitelist[_compETH][borrow] = true;
+		whitelist[_compEthRepayHelper][repay_behalf] = true;
+
+		whitelist[_stackETH][deposit_eth] = true;
+		whitelist[_stackETH][withdraw_eth] = true;
+
 
 	}
 }
