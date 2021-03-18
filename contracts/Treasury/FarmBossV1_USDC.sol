@@ -41,7 +41,10 @@ contract FarmBossV1_USDC is FarmBossV1 {
 	bytes4 constant private mint_ctoken = 0xa0712d68; // mint(uint256 mintAmount)
 	bytes4 constant private redeem_ctoken = 0xdb006a75; // redeem(uint256 redeemTokens)
 	bytes4 constant private claim_COMP = 0x1c3db2e0; // claimComp(address holder, address[] cTokens)
-	bytes4 constant private swap_erc20_1inch = 0x90411a32; // swap(address,address,address,address,address,uint256,uint256,uint256,uint256,address,bytes,uint256,uint256,uint256,bytes)
+
+	// 1INCH EXCHANGE
+	bytes4 constant private swap_erc20_1inch = 0x7c025200; // swap(address, (address,address,address,address,uint256,uint256,uint256,bytes), bytes)
+	bytes4 constant private swap_one = 0x2e95b6c8; // unoswap(address srcToken, uint256 amount, uint256 minReturn, bytes32[])
 
 	constructor(address payable _governance, address _treasury, address _underlying) public FarmBossV1(_governance, _treasury, _underlying){
 	}
@@ -213,9 +216,10 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		whitelist[_comptroller][claim_COMP] = true;
 
 		address _COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888; // allow COMP sell on 1inch
-		address _1inchEx = 0x111111125434b319222CdBf8C261674aDB56F3ae;
+		address _1inchEx = 0x11111112542D85B3EF69AE05771c2dCCff4fAa26;
 		IERC20(_COMP).safeApprove(_1inchEx, MAX_UINT256);
-		whitelist[_1inchEx][swap_erc20_1inch] = true;
+		whitelist[_1inchEx][swap_erc20_1inch] = true; // COMP -> USDC
+		whitelist[_1inchEx][swap_one] = true;
 		////////////// END ALLOW Compound USDC //////////////
 	}
 }

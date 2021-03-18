@@ -55,6 +55,15 @@ contract FarmBossV1_WETH is FarmBossV1 {
 		address ALPHA_V2 = 0xeEa3311250FE4c3268F8E684f7C87A82fF183Ec1;
 		whitelist[ALPHA_V2][deposit_alphav2] = true;
 		whitelist[ALPHA_V2][withdraw_alphav2] = true;
+
+		// for selling alpha. alpha is distributed 1x/week by a Uniswap Merkle distributor contract
+		address ALPHA_TOKEN = 0xa1faa113cbE53436Df28FF0aEe54275c13B40975;
+		address _1inchEx = 0x11111112542D85B3EF69AE05771c2dCCff4fAa26;
+		bytes4 swap_erc20_1inch = 0x7c025200; // swap(address, (address,address,address,address,uint256,uint256,uint256,bytes), bytes)
+		bytes4 swap_one = 0x2e95b6c8; // unoswap(address srcToken, uint256 amount, uint256 minReturn, bytes32[])
+		IERC20(ALPHA_TOKEN).safeApprove(_1inchEx, MAX_UINT256);
+		whitelist[_1inchEx][swap_erc20_1inch] = true; // ALPHA -> ETH
+		whitelist[_1inchEx][swap_one] = true;
 		////////////// END ALLOW ALPHAHOMORAV2 //////////////
 
 		////////////// ALLOW RARI CAPITAL AUTO ROTATION //////////////
