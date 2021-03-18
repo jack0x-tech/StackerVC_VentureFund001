@@ -1,5 +1,5 @@
 // RECOMMEND TESTING WITH:
-// ganache-cli -a 10 -e 1000 -p 7545 -i 5777
+// ganache-cli -a 200 -e 1000 -p 7545 -i 5777
 
 // NOTE: a lot of these tests deal with specific timing scenarios. If the tests fail, you can try to run again. Also, if they are off by very small amounts, it's possible that
 // the blockchain has advanced by 1 second more than the test allows for, and will slightly change the calculations. However usually these tests do work!

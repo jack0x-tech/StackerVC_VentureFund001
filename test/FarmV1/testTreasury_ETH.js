@@ -1,5 +1,5 @@
 // RECOMMEND TESTING WITH:
-// ganache-cli -a 10 -e 1000 -p 7545 -i 5777
+// ganache-cli -a 200 -e 1000 -p 7545 -i 5777
 
 const FarmTreasuryV1_ETH = artifacts.require("FarmTreasuryV1_ETH");
 const WrapETH = artifacts.require("WrapETH");

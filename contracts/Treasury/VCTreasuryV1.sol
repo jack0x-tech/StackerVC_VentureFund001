@@ -35,11 +35,12 @@ contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 	bool public killed;
 	address public constant BET_TOKEN = 0xfdd4E938Bb067280a52AC4e02AaF1502Cc882bA6;
 	address public constant STACK_TOKEN = 0x514910771AF9Ca656af840dff83E8264EcF986CA; // TODO: need to deploy this contract, incorrect address, this is LINK token
-	address public constant BASE_TOKEN = 0xeEa3311250FE4c3268F8E684f7C87A82fF183Ec1; // currently AlphaHomora_ibETHv2, this is the token that's held & we try to earn more via a successful fund
+	
+	address public BASE_TOKEN; // fund will be denominated in stackETH, to generate interest on funds that aren't actively invested
 
 	// we have some looping in the contract. have a limit for loops so that they succeed.
 	// loops & especially unbounded loops are bad solidity design.
-	uint256 public constant LOOP_LIMIT = 50; 
+	uint256 public constant LOOP_LIMIT = 200; 
 
 	// fixed once set
 	uint256 public initETH;
@@ -94,9 +95,10 @@ contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 	event DevestmentRevoked(uint256 sellId, uint256 time);
 	event DevestmentExecuted(uint256 sellId, address tokenSell, uint256 ethIn, uint256 amountOut, address taker, uint256 time);
 
-	constructor(address payable _governance) public ERC20("Stacker.vc Fund001", "SVC001") {
+	constructor(address payable _governance, address _baseToken) public ERC20("Stacker.vc Fund001", "SVC001") {
 		deployer = msg.sender;
 		governance = _governance;
+		BASE_TOKEN = _baseToken;
 
 		currentState = FundStates.setup;
 		
@@ -172,7 +174,7 @@ contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 		fundStartTime = block.timestamp;
 		fundCloseTime = block.timestamp.add(ONE_YEAR);
 
-		// fund must be sent BASE_TOKEN before initialization
+		// fund must be sent BASE_TOKEN before calling this function
 		initETH = IERC20(BASE_TOKEN).balanceOf(address(this));
 		require(initETH > 0, "VCTREASURYV1: !initETH");
 		maxInvestment = initETH.mul(investmentCap).div(max);
