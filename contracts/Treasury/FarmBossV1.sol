@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
 /*
+	The farmboss contracts allows for a whitelist of contracts and functions a "farmer" is allowed to call. Tokens can be whitelisted, and contracts approved for call by DAO governance.
+	Farmers need to be approved by DAO governance as well, before they are allowed to call any whitelisted contract/function. 
 
+	If needed, the governance can directly execute any action and bypass the whitelist.
+
+	This contract needs to be inherited by another contract that implements _initFirstFarms() which gets called in the constructor. This initializes the first farms that the fund
+	is allowed to invest into, so a governance proposal isn't needed right away.
 */
 
 pragma solidity ^0.6.11;
