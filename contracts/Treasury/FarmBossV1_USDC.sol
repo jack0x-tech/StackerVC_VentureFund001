@@ -37,6 +37,9 @@ contract FarmBossV1_USDC is FarmBossV1 {
 	bytes4 constant private deposit = 0xb6b55f25; // deposit(uint256 _amount)
 	bytes4 constant private withdraw = 0x2e1a7d4d; // withdraw(uint256 _shares)
 
+	// AlphaHomora FUNCTIONS
+	bytes4 constant private claim = 0x2f52ebb7;
+
 	// COMP FUNCTIONS
 	bytes4 constant private mint_ctoken = 0xa0712d68; // mint(uint256 mintAmount)
 	bytes4 constant private redeem_ctoken = 0xdb006a75; // redeem(uint256 redeemTokens)
@@ -206,6 +209,20 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		whitelist[_yearnUSDC][withdraw] = true;
 		////////////// END ALLOW yEarn USDC //////////////
 
+		////////////// ALLOW AlphaHomoraV2 USDC //////////////
+		address _ahUSDC = 0x08bd64BFC832F1C2B3e07e634934453bA7Fa2db2;
+		IERC20(underlying).safeApprove(_ahUSDC, MAX_UINT256);
+		whitelist[_ahUSDC][deposit] = true;
+		whitelist[_ahUSDC][withdraw] = true;
+		whitelist[_ahUSDC][claim] = true; // claim ALPHA token reward
+
+		address ALPHA_TOKEN = 0xa1faa113cbE53436Df28FF0aEe54275c13B40975;
+		address _1inchEx = 0x11111112542D85B3EF69AE05771c2dCCff4fAa26;
+		IERC20(ALPHA_TOKEN).safeApprove(_1inchEx, MAX_UINT256);
+		whitelist[_1inchEx][swap_erc20_1inch] = true; // ALPHA -> ETH
+		whitelist[_1inchEx][swap_one] = true;
+		////////////// END ALLOW AlphaHomoraV2 USDC //////////////
+
 		////////////// ALLOW Compound USDC //////////////
 		address _compUSDC = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
 		IERC20(underlying).safeApprove(_compUSDC, MAX_UINT256);
@@ -216,7 +233,6 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		whitelist[_comptroller][claim_COMP] = true;
 
 		address _COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888; // allow COMP sell on 1inch
-		address _1inchEx = 0x11111112542D85B3EF69AE05771c2dCCff4fAa26;
 		IERC20(_COMP).safeApprove(_1inchEx, MAX_UINT256);
 		whitelist[_1inchEx][swap_erc20_1inch] = true; // COMP -> USDC
 		whitelist[_1inchEx][swap_one] = true;

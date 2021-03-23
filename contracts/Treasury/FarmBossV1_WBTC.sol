@@ -45,7 +45,7 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 			strategies, as we do with our USDC strategies.
 		*/
 
-		address _compWBTC = 0xC11b1268C1A384e55C48c2391d8d480264A3A7F4;
+		address _compWBTC = 0xccF4429DB6322D5C611ee964527D42E5d685DD6a;
 		address _compETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
 		address _comptroller = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
 		address _compEthRepayHelper = 0xf859A1AD94BcF445A406B892eF0d3082f4174088;
@@ -53,7 +53,7 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 		// stackVaults
 		address _stackETH = 0x0572bf36dBD8BBF41ACfaA74139B20ED8a7C0366;
 
-		IERC20(underlying).safeApprove(0xC11b1268C1A384e55C48c2391d8d480264A3A7F4, MAX_UINT256);
+		IERC20(underlying).safeApprove(_compWBTC, MAX_UINT256);
 		// mint/redeem compBTC
 		whitelist[_compWBTC][mint_ctoken] = true;
 		whitelist[_compWBTC][redeem_ctoken] = true;
