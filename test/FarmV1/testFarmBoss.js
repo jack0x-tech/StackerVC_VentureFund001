@@ -1,5 +1,5 @@
 // RECOMMEND TESTING WITH:
-// ganache-cli -a 200 -e 1000 -p 7545 -i 5777
+// ganache-cli -a 200 -e 100000 -p 7545 -i 5777
 
 const FarmTreasuryV1_ETH = artifacts.require("FarmTreasuryV1_ETH");
 const WrapETH = artifacts.require("WrapETH");
@@ -125,18 +125,18 @@ contract("test FarmTreasuryV1", async (accounts) => {
 		// have farmer send ETH to user
 		await _farmboss.farmerExecute(USER_2, web3.utils.toWei("1","ether"), FALLBACK_FN, {from: FARMER});
 		// if this line fails, restart ganache-cli with the right settings (top)
-		assert.equal(web3.utils.toWei("1001", "ether"), (await web3.eth.getBalance(USER_2)).toString()); // 1000 + 1 because of ganache-cli settings above
+		assert.equal(web3.utils.toWei("100001", "ether"), (await web3.eth.getBalance(USER_2)).toString()); // 1000 + 1 because of ganache-cli settings above
 
 		// have governance send ETH to user 
 		await _farmboss.govExecute(USER_2, web3.utils.toWei("1","ether"), "0x", {from: GOVERNANCE}); // this also is fallback ONLY for gov
-		assert.equal(web3.utils.toWei("1002", "ether"), (await web3.eth.getBalance(USER_2)).toString());
+		assert.equal(web3.utils.toWei("100002", "ether"), (await web3.eth.getBalance(USER_2)).toString());
 
 		// have governance send ETH to user 
 		await _farmboss.govExecute(USER_2, web3.utils.toWei("1","ether"), FALLBACK_FN, {from: GOVERNANCE}); // also works as fallback for gov
-		assert.equal(web3.utils.toWei("1003", "ether"), (await web3.eth.getBalance(USER_2)).toString());
+		assert.equal(web3.utils.toWei("100003", "ether"), (await web3.eth.getBalance(USER_2)).toString());
 
 		// have farmer send ETH to user with bad call data
 		await _farmboss.farmerExecute(USER_2, web3.utils.toWei("1","ether"), "0x", {from: FARMER});
-		assert.equal(web3.utils.toWei("1004", "ether"), (await web3.eth.getBalance(USER_2)).toString());
+		assert.equal(web3.utils.toWei("100004", "ether"), (await web3.eth.getBalance(USER_2)).toString());
 	});
 });
