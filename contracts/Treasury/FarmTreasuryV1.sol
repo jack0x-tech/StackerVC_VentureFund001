@@ -26,12 +26,15 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 	using Address for address;
 
 	mapping(address => DepositInfo) public userDeposits;
+	mapping(address => bool) public noLockWhitelist;
 
 	struct DepositInfo {
 		uint256 amountUnderlyingLocked;
 		uint256 timestampDeposit;
 		uint256 timestampUnlocked;
 	}
+
+	uint256 internal constant LOOP_LIMIT = 200;
 
 	address payable public governance;
 	address payable public farmBoss;
@@ -86,6 +89,16 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		farmBoss = _new;
 	}
 
+	function setNoLockWhitelist(address[] calldata _accounts, bool[] calldata _noLock) external {
+		require(msg.sender == governance, "FARMTREASURYV1: !governance");
+		require(_accounts.length == _noLock.length && _accounts.length <= LOOP_LIMIT, "FARMTREASURYV1: check array lengths");
+
+		for (uint256 i = 0; i < _accounts.length; i++){
+			noLockWhitelist[_accounts[i]] = _noLock[i];
+		}
+
+	}
+
 	function pause() external {
 		require(msg.sender == governance, "FARMTREASURYV1: !governance");
 		paused = true;
@@ -119,7 +132,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 	function setWaitPeriod(uint256 _new) external {
 		require(msg.sender == governance, "FARMTREASURYV1: !governance");
-		require(_new <= 5 weeks, "FARMTREASURYV1: too long wait");
+		require(_new <= 10 weeks, "FARMTREASURYV1: too long wait");
 
 		waitPeriod = _new;
 	}
@@ -188,7 +201,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		}
 		// not the first deposit, if there are still funds locked, then average out the waits (ie: 1 BTC locked 10 days = 2 BTC locked 5 days)
 		else {
-			uint256 _lockedAmt = _getLockedAmount(_existingInfo.amountUnderlyingLocked, _existingInfo.timestampDeposit, _existingInfo.timestampUnlocked);
+			uint256 _lockedAmt = _getLockedAmount(_account, _existingInfo.amountUnderlyingLocked, _existingInfo.timestampDeposit, _existingInfo.timestampUnlocked);
 			// if there's no lock, disregard old info and make a new lock
 
 			if (_lockedAmt == 0){
@@ -239,14 +252,14 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 	function getLockedAmount(address _account) public view returns (uint256) {
 		DepositInfo memory _existingInfo = userDeposits[_account];
-		return _getLockedAmount(_existingInfo.amountUnderlyingLocked, _existingInfo.timestampDeposit, _existingInfo.timestampUnlocked);
+		return _getLockedAmount(_account, _existingInfo.amountUnderlyingLocked, _existingInfo.timestampDeposit, _existingInfo.timestampUnlocked);
 
 	}
 
 	// the locked amount linearly decreases until the timestampUnlocked time, then it's zero
 	// Example: if 5 BTC contributed (2 week lock), then after 1 week there will be 2.5 BTC locked, the rest is free to transfer/withdraw
-	function _getLockedAmount(uint256 _amountLocked, uint256 _timestampDeposit, uint256 _timestampUnlocked) internal view returns (uint256) {
-		if (_timestampUnlocked <= block.timestamp){
+	function _getLockedAmount(address _account, uint256 _amountLocked, uint256 _timestampDeposit, uint256 _timestampUnlocked) internal view returns (uint256) {
+		if (_timestampUnlocked <= block.timestamp || noLockWhitelist[_account]){
 			return 0;
 		}
 		else {
@@ -287,7 +300,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		// cannot withdraw/transfer same block as deposit (timestamp would be equal)
 		require(_existingInfo.timestampDeposit != block.timestamp, "FARMTREASURYV1: deposit this block");
 
-		uint256 _lockedAmt = _getLockedAmount(_existingInfo.amountUnderlyingLocked, _existingInfo.timestampDeposit, _existingInfo.timestampUnlocked);
+		uint256 _lockedAmt = _getLockedAmount(_account, _existingInfo.amountUnderlyingLocked, _existingInfo.timestampDeposit, _existingInfo.timestampUnlocked);
 		uint256 _balance = balanceOf(_account);
 
 		// require that any funds locked are not leaving the account in question.

@@ -45,7 +45,7 @@ abstract contract FarmBossV1 {
 	address public treasury;
 	address public underlying;
 
-	uint256 public constant LOOP_LIMIT = 200;
+	uint256 internal constant LOOP_LIMIT = 200;
 	uint256 public constant MAX_UINT256 = 2**256 - 1; // aka: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 
 	event NewFarmer(address _farmer);
