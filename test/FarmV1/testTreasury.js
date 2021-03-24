@@ -375,4 +375,19 @@ contract("test FarmTreasuryV1", async (accounts) => {
 		assert.equal((_depositAmt * 9 / 10).toString(), (await _treasury.balanceOf(USER)).toString()); // balanceOf does change
 	});
 
+	it ("should deposit, verify lock, then add to noLockWhitelist and verify no lock", async () => {
+		let _underlying = await _initUnderlying();
+		let _treasury = await _initTreasury(_underlying);
+		let _farmboss = await _initFarmBoss(_underlying, _treasury);
+
+		const _depositAmt = 1000*1e6; // 1000 USDC
+		await _makeFirstDeposit(_underlying, _treasury, _depositAmt);
+
+		assert.equal((1000*1e6).toString(), (await _treasury.getLockedAmount(USER)).toString());
+
+		await _treasury.setNoLockWhitelist([USER], [true], {from: GOVERNANCE});
+
+		assert.equal("0", (await _treasury.getLockedAmount(USER)).toString());
+	});
+
 });
