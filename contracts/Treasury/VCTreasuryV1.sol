@@ -415,10 +415,10 @@ contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 		if (currentState == FundStates.closed || _state == FundStates.setup){
 			return;
 		}
+		
 		currentState = _state;
-
-		// if closing the fund AND the fund was not `killed`, assess the fee.
-		if (_state == FundStates.closed && !killed){
+		// if closing the fund, assess the fee.
+		if (_state == FundStates.closed){
 			_assessFee();
 		}
 	}
@@ -455,7 +455,7 @@ contract VCTreasuryV1 is ERC20, ReentrancyGuard {
 		for (uint256 i = 0; i < _tokens.length; i++){
 			require(_tokens[i] != address(this), "can't claim address(this)");
 			require(boughtTokens[_tokens[i]], "!boughtToken");
-			// don't allow BET/STACK to be claimed if the fund was "killed"
+			// don't allow BET/STACK to be claimed if the fund was "killed", these were "gifts" and not investments
 			if (_tokens[i] == BET_TOKEN || _tokens[i] == STACK_TOKEN){
 				require(!killed, "BET/STACK can only be claimed if fund wasn't killed");
 			}

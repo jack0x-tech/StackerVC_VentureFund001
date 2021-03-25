@@ -52,12 +52,12 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 	// limits on rebalancing from the farmer, trying to negate errant rebalances
 	uint256 public rebalanceUpLimit = 150; // maximum of a 1.5% gain per rebalance
-	uint256 public rebalanceUpWaitTime = 6 hours;
+	uint256 public rebalanceUpWaitTime = 23 hours;
 	uint256 public lastRebalanceUpTime;
 
 	// waiting period on withdraws from time of deposit
 	// locked amount linearly decreases until the time is up, so at waitPeriod/2 after deposit, you can withdraw depositAmt/2 funds.
-	uint256 public waitPeriod = 2 weeks;
+	uint256 public waitPeriod = 1 weeks;
 
 	// hot wallet holdings for instant withdraw, in bips
 	// if the hot wallet balance expires, the users will need to wait for the next rebalance period in order to withdraw
@@ -96,7 +96,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		for (uint256 i = 0; i < _accounts.length; i++){
 			noLockWhitelist[_accounts[i]] = _noLock[i];
 		}
-
 	}
 
 	function pause() external {

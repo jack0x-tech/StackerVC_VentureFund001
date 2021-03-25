@@ -65,6 +65,7 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 		whitelist[_compETH][borrow] = true;
 		whitelist[_compEthRepayHelper][repay_behalf] = true;
 
+		// stackETH deposit the loaned ETH from Compound
 		whitelist[_stackETH][deposit_eth] = true;
 		whitelist[_stackETH][withdraw_eth] = true;
 
