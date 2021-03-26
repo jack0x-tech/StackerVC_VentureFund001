@@ -65,8 +65,8 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 	uint256 public ACTIVELY_FARMED;
 
-	event FailedRebalance(string reason);
-	event Rebalance(uint256 amountIn, uint256 amountToFarmer, uint256 timestamp);
+	event RebalanceHot(uint256 amountIn, uint256 amountToFarmer, uint256 timestamp);
+	event ProfitDeclared(bool profit, uint256 amount, uint256 timestamp, uint256 totalAmountInPool, uint256 totalSharesInPool);
 	event Deposit(address depositor, uint256 amount, address referral);
 	event Withdraw(address withdrawer, uint256 amount);
 
@@ -335,6 +335,9 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		_rebalanceHot(_fundsNeeded, _amountChange); // if the hot wallet rebalance fails, revert() the entire function
 		// end logic
 
+		// for off-chain APY calculations
+		emit ProfitDeclared(true, _amount, block.timestamp, _getTotalUnderlying(), totalShares);
+
 		return (_fundsNeeded, _amountChange); // in case we need them, FE simulations and such
 	}
 
@@ -354,6 +357,9 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 			return (_fundsNeeded, _amountChange); // in case we need them, FE simulations and such
 		}
+
+		// for off-chain APY calculations
+		emit ProfitDeclared(false, _amount, block.timestamp, _getTotalUnderlying(), totalShares);
 
 		return (false, 0);
 	}
@@ -466,7 +472,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 			// we took funds from the farmBoss to refill the hot wallet, reflect this in ACTIVELY_FARMED
 			ACTIVELY_FARMED = ACTIVELY_FARMED.sub(_amountChange);
 
-			emit Rebalance(_amountChange, 0, block.timestamp);
+			emit RebalanceHot(_amountChange, 0, block.timestamp);
 		}
 		else {
 			require(farmBoss != address(0), "FARMTREASURYV1: !FarmBoss"); // don't burn funds
@@ -476,7 +482,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 			// we sent more funds for the farmer to farm, reflect this
 			ACTIVELY_FARMED = ACTIVELY_FARMED.add(_amountChange);
 
-			emit Rebalance(0, _amountChange, block.timestamp);
+			emit RebalanceHot(0, _amountChange, block.timestamp);
 		}
 	}
 
