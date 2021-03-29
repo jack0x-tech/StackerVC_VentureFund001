@@ -66,7 +66,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 	uint256 public ACTIVELY_FARMED;
 
 	event RebalanceHot(uint256 amountIn, uint256 amountToFarmer, uint256 timestamp);
-	event ProfitDeclared(bool profit, uint256 amount, uint256 timestamp, uint256 totalAmountInPool, uint256 totalSharesInPool);
+	event ProfitDeclared(bool profit, uint256 amount, uint256 timestamp, uint256 totalAmountInPool, uint256 totalSharesInPool, uint256 performanceFeeTotal, uint256 baseFeeTotal);
 	event Deposit(address depositor, uint256 amount, address referral);
 	event Withdraw(address withdrawer, uint256 amount);
 
@@ -320,12 +320,19 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 			require(ACTIVELY_FARMED.mul(rebalanceUpLimit).div(max) >= _amount, "FARMTREASURYV1 _amount > rebalanceUpLimit");
 			// farmer incurred a gain of _amount, add this to the amount being farmed
 			ACTIVELY_FARMED = ACTIVELY_FARMED.add(_amount);
-			_performanceFee(_amount, _farmerRewards);
-			_annualFee(_farmerRewards);
+			uint256 _totalPerformance = _performanceFee(_amount, _farmerRewards);
+			uint256 _totalAnnual = _annualFee(_farmerRewards);
 
 			// for farmer controls, and also for the annual fee time
 			// only update this if there is a reported gain, otherwise this is just a hot wallet rebalance, and we should always allow these
 			lastRebalanceUpTime = block.timestamp; 
+
+			// for off-chain APY calculations, fees assessed
+			emit ProfitDeclared(true, _amount, block.timestamp, _getTotalUnderlying(), totalShares, _totalPerformance, _totalAnnual);
+		}
+		else {
+			// for off-chain APY calculations, no fees assessed
+			emit ProfitDeclared(true, _amount, block.timestamp, _getTotalUnderlying(), totalShares, 0, 0);
 		}
 		// end fee logic & profit recording
 
@@ -335,8 +342,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		_rebalanceHot(_fundsNeeded, _amountChange); // if the hot wallet rebalance fails, revert() the entire function
 		// end logic
 
-		// for off-chain APY calculations
-		emit ProfitDeclared(true, _amount, block.timestamp, _getTotalUnderlying(), totalShares);
+		
 
 		return (_fundsNeeded, _amountChange); // in case we need them, FE simulations and such
 	}
@@ -358,13 +364,13 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 			return (_fundsNeeded, _amountChange); // in case we need them, FE simulations and such
 		}
 
-		// for off-chain APY calculations
-		emit ProfitDeclared(false, _amount, block.timestamp, _getTotalUnderlying(), totalShares);
+		// for off-chain APY calculations, no fees assessed
+		emit ProfitDeclared(false, _amount, block.timestamp, _getTotalUnderlying(), totalShares, 0, 0);
 
 		return (false, 0);
 	}
 
-	function _performanceFee(uint256 _amount, address _farmerRewards) internal {
+	function _performanceFee(uint256 _amount, address _farmerRewards) internal returns (uint256){
 
 		uint256 _existingShares = totalShares;
 		uint256 _balance = _getTotalUnderlying();
@@ -374,7 +380,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		uint256 _performanceTotalUnderlying = _performanceToFarmerUnderlying.add(_performanceToTreasuryUnderlying);
 
 		if (_performanceTotalUnderlying == 0){
-			return;
+			return 0;
 		}
 
 		uint256 _sharesToMint = _underlyingFeeToShares(_performanceTotalUnderlying, _balance, _existingShares);
@@ -385,16 +391,21 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		_mintShares(_farmerRewards, _sharesToFarmer);
 		_mintShares(governance, _sharesToTreasury);
 
+		uint256 _underlyingFarmer = getUnderlyingForShares(_sharesToFarmer);
+		uint256 _underlyingTreasury = getUnderlyingForShares(_sharesToTreasury);
+
 		// do two mint events, in underlying, not shares
-		emit Transfer(address(0), _farmerRewards, getUnderlyingForShares(_sharesToFarmer));
-		emit Transfer(address(0), governance, getUnderlyingForShares(_sharesToTreasury));
+		emit Transfer(address(0), _farmerRewards, _underlyingFarmer);
+		emit Transfer(address(0), governance, _underlyingTreasury);
+
+		return _underlyingFarmer.add(_underlyingTreasury);
 	}
 
 	// we are taking baseToTreasury + baseToFarmer each year, every time this is called, look when we took fee last, and linearize the fee to now();
-	function _annualFee(address _farmerRewards) internal {
+	function _annualFee(address _farmerRewards) internal returns (uint256) {
 		uint256 _lastAnnualFeeTime = lastRebalanceUpTime;
 		if (_lastAnnualFeeTime >= block.timestamp){
-			return;
+			return 0;
 		}
 
 		uint256 _elapsedTime = block.timestamp.sub(_lastAnnualFeeTime);
@@ -407,7 +418,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		uint256 _annualTotalUnderlying = _annualToFarmerUnderlying.add(_annualToTreasuryUnderlying);
 
 		if (_annualTotalUnderlying == 0){
-			return;
+			return 0;
 		}
 
 		uint256 _sharesToMint = _underlyingFeeToShares(_annualTotalUnderlying, _balance, _existingShares);
@@ -418,10 +429,14 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		_mintShares(_farmerRewards, _sharesToFarmer);
 		_mintShares(governance, _sharesToTreasury);
 
-		// do two mint events, in underlying, not shares
-		emit Transfer(address(0), _farmerRewards, getUnderlyingForShares(_sharesToFarmer));
-		emit Transfer(address(0), governance, getUnderlyingForShares(_sharesToTreasury));
+		uint256 _underlyingFarmer = getUnderlyingForShares(_sharesToFarmer);
+		uint256 _underlyingTreasury = getUnderlyingForShares(_sharesToTreasury);
 
+		// do two mint events, in underlying, not shares
+		emit Transfer(address(0), _farmerRewards, _underlyingFarmer);
+		emit Transfer(address(0), governance, _underlyingTreasury);
+
+		return _underlyingFarmer.add(_underlyingTreasury);
 	}
 
 	function _underlyingFeeToShares(uint256 _totalFeeUnderlying, uint256 _balance, uint256 _existingShares) pure internal returns (uint256 _sharesToMint){
