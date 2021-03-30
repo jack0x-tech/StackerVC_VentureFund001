@@ -26,7 +26,7 @@ contract("test FarmTreasuryV1", async (accounts) => {
 	}
 
 	async function _initTreasury(_underlyingInstance){
-		return await FarmTreasuryV1.new("TEST", 18, _underlyingInstance.address, {from: FARMER});
+		return await FarmTreasuryV1.new("TEST", 6, _underlyingInstance.address, {from: FARMER});
 	}
 
 	async function _initFarmBoss(_underlyingInstance, _treasuryInstance){

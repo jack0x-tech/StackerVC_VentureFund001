@@ -57,7 +57,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 	// waiting period on withdraws from time of deposit
 	// locked amount linearly decreases until the time is up, so at waitPeriod/2 after deposit, you can withdraw depositAmt/2 funds.
-	uint256 public waitPeriod = 1 weeks;
+	uint256 public waitPeriod = 2 weeks;
 
 	// hot wallet holdings for instant withdraw, in bips
 	// if the hot wallet balance expires, the users will need to wait for the next rebalance period in order to withdraw
@@ -72,7 +72,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 	constructor(string memory _nameUnderlying, uint8 _decimalsUnderlying, address _underlying) public FarmTokenV1(_nameUnderlying, _decimalsUnderlying, _underlying) {
 		governance = msg.sender;
-
 		lastRebalanceUpTime = block.timestamp;
 	}
 
@@ -508,7 +507,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		return _balanceHere.add(_balanceFarmed);
 	}
 
-	function rescue(address _token, uint256 _amount) external {
+	function rescue(address _token, uint256 _amount) external nonReentrant {
         require(msg.sender == governance, "FARMTREASURYV1: !governance");
 
         if (_token != address(0)){

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 /*
-A simple gauge contract to measure the amount of tokens locked, and reward users in a different token.
-
-Using this for STACK/ETH Uni LP currently.
+A direct copy of GaugeD2.sol, used for testing. We can configure this Gauge in the constructor, and use less constants. Gas is cheaper for the non-configurable gauge.
 */
 
 pragma solidity ^0.6.11;
@@ -16,22 +14,21 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../Interfaces/IFarmTokenV1.sol";
 
-contract GaugeD2 is IERC20, ReentrancyGuard {
+contract GaugeD2_configurable is IERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address payable public governance = 0xB156d2D9CAdB12a252A9015078fc5cb7E92e656e; // STACK DAO Agent address
-    address public constant acceptToken = 0x0572bf36dBD8BBF41ACfaA74139B20ED8a7C0366; // TODO: stackToken rebase token
+    address payable public governance;
+    address public acceptToken;
+    address public STACK;
 
-    address public constant STACK = 0xe0955F26515d22E347B17669993FCeFcc73c3a0a; // STACK DAO Token
-
-    uint256 public emissionRate = 100e18/100000; // TODO: final emission rate
+    uint256 public emissionRate = 100e18/100000;
 
     uint256 public depositedShares;
 
-    uint256 public constant startBlock = 0; // TODO: start block
-    uint256 public endBlock = startBlock + 100000; // TODO: length of emission 
+    uint256 public startBlock; 
+    uint256 public endBlock;
 
     uint256 public lastBlock; // last block the distribution has ran
     uint256 public tokensAccrued; // tokens to distribute per weight scaled by 1e18
@@ -51,7 +48,14 @@ contract GaugeD2 is IERC20, ReentrancyGuard {
     // never emitted, only included here to align with ERC20 spec.
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
-    constructor() public {
+    // TODO: add governance, acceptToken, STACK here for testing reasons
+    constructor(address payable _governance, address _acceptToken, address _STACK) public {
+        governance = _governance;
+        acceptToken = _acceptToken;
+        STACK = _STACK;
+
+        startBlock = block.number.add(1);
+        endBlock = block.number.add(100001);
     }
 
     function setGovernance(address payable _new) external {
