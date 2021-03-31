@@ -24,15 +24,28 @@ abstract contract FarmBossV1 {
 	using SafeMath for uint256;
 	using Address for address;
 
-	mapping(address => mapping(bytes4 => bool)) public whitelist; // contracts -> mapping (functionSig -> allowed)
+	mapping(address => mapping(bytes4 => uint256)) public whitelist; // contracts -> mapping (functionSig -> allowed, msg.value allowed)
 	mapping(address => bool) public farmers;
 
-	bytes4 constant private FALLBACK_FN_SIG = 0xffffffff;
+	// constants for the whitelist logic
+	bytes4 constant internal FALLBACK_FN_SIG = 0xffffffff;
+	// 0 = not allowed ... 1 = allowed however value must be zero ... 2 = allowed with msg.value either zero or non-zero
+	uint256 constant internal NOT_ALLOWED = 0;
+	uint256 constant internal ALLOWED_NO_MSG_VALUE = 1;
+	uint256 constant internal ALLOWED_W_MSG_VALUE = 2; 
+
+	// used in the whitelist mapping ^^^
+	// allowed to call function in whitelist, allowed to call function with msg.value in whitelist?
+	struct WhitelistInfo {
+		bool allowed;
+		bool valueAllowed;
+	}
 
 	// for passing to functions more cleanly
 	struct WhitelistData {
 		address account;
 		bytes4 fnSig;
+		bool valueAllowed;
 	}
 
 	// for passing to functions more cleanly
@@ -46,12 +59,12 @@ abstract contract FarmBossV1 {
 	address public underlying;
 
 	uint256 internal constant LOOP_LIMIT = 200;
-	uint256 public constant MAX_UINT256 = 2**256 - 1; // aka: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	uint256 internal constant MAX_UINT256 = 2**256 - 1; // aka: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 
 	event NewFarmer(address _farmer);
 	event RmFarmer(address _farmer);
 
-	event NewWhitelist(address _contract, bytes4 _fnSig);
+	event NewWhitelist(address _contract, bytes4 _fnSig, uint256 _allowedType);
 	event RmWhitelist(address _contract, bytes4 _fnSig);
 
 	event NewApproval(address _token, address _contract);
@@ -85,7 +98,7 @@ abstract contract FarmBossV1 {
 		governance = _new;
 	}
 
-	function getWhitelist(address _contract, bytes4 _fnSig) external view returns (bool){
+	function getWhitelist(address _contract, bytes4 _fnSig) external view returns (uint256){
 		return whitelist[_contract][_fnSig];
 	}
 
@@ -111,15 +124,23 @@ abstract contract FarmBossV1 {
 		require(msg.sender == governance, "FARMBOSSV1: !governance");
 		require(_newActions.length.add(_rmActions.length).add(_newApprovals.length).add(_newDepprovals.length) <= LOOP_LIMIT, "FARMBOSSV1: >LOOP_LIMIT"); // dont allow unbounded loops
 
-		// add to whitelist
+		// add to whitelist, or change a whitelist entry if want to allow/disallow msg.value
 		for (uint256 i = 0; i < _newActions.length; i++){
-			whitelist[_newActions[i].account][_newActions[i].fnSig] = true;
+			// if the valueAllowed, then mark this & emit event, same for function allowed BUT no value allowed
+			if (_newActions[i].valueAllowed){
+				whitelist[_newActions[i].account][_newActions[i].fnSig] = ALLOWED_W_MSG_VALUE;
 
-			emit NewWhitelist(_newActions[i].account, _newActions[i].fnSig);
+				emit NewWhitelist(_newActions[i].account, _newActions[i].fnSig, ALLOWED_W_MSG_VALUE);
+			}
+			else {
+				whitelist[_newActions[i].account][_newActions[i].fnSig] = ALLOWED_NO_MSG_VALUE;
+
+				emit NewWhitelist(_newActions[i].account, _newActions[i].fnSig, ALLOWED_NO_MSG_VALUE);
+			}
 		}
 		// remove from whitelist
 		for (uint256 j = 0; j < _rmActions.length; j++){
-			whitelist[_rmActions[j].account][_rmActions[j].fnSig] = false;
+			whitelist[_rmActions[j].account][_rmActions[j].fnSig] = NOT_ALLOWED;
 
 			emit RmWhitelist(_rmActions[j].account, _rmActions[j].fnSig);
 		}
@@ -184,9 +205,14 @@ abstract contract FarmBossV1 {
 
 		bytes4 _transferSig = 0xa9059cbb;
 		bytes4 _approveSig = 0x095ea7b3;
-		if (_fnSig == _transferSig || _fnSig == _approveSig || !whitelist[_target][_fnSig]){
+		if (_fnSig == _transferSig || _fnSig == _approveSig || whitelist[_target][_fnSig] == NOT_ALLOWED){
 			return false;
 		}
+		// check if value not allowed & value
+		else if (whitelist[_target][_fnSig] == ALLOWED_NO_MSG_VALUE && _value > 0){
+			return false;
+		}
+		// either ALLOWED_W_MSG_VALUE or ALLOWED_NO_MSG_VALUE with zero value
 		return true;
 	}
 

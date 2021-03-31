@@ -103,14 +103,14 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		address _crv3Pool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
 		address _crv3PoolToken = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
 		IERC20(underlying).safeApprove(_crv3Pool, MAX_UINT256); // can set directly to value, called on contract init
-		whitelist[_crv3Pool][add_liquidity_3] = true;
-		whitelist[_crv3Pool][remove_liquidity_one] = true;
+		whitelist[_crv3Pool][add_liquidity_3] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_crv3Pool][remove_liquidity_one] = ALLOWED_NO_MSG_VALUE;
 
 		// deposit _crv3PoolToken to yEarn, receive yCrv3Pool
 		address _yearn3Pool = 0x9cA85572E6A3EbF24dEDd195623F188735A5179f;
 		IERC20(_crv3PoolToken).safeApprove(_yearn3Pool, MAX_UINT256); 
-		whitelist[_yearn3Pool][deposit] = true; 
-		whitelist[_yearn3Pool][withdraw] = true; 
+		whitelist[_yearn3Pool][deposit] = ALLOWED_NO_MSG_VALUE; 
+		whitelist[_yearn3Pool][withdraw] = ALLOWED_NO_MSG_VALUE; 
 		////////////// END ALLOW crv3Pool & yEarn //////////////
 
 		////////////// ALLOW crvSUSD & yEarn //////////////
@@ -119,19 +119,19 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		address _crvSUSDPool = 0xA5407eAE9Ba41422680e2e00537571bcC53efBfD;
 		address _crvSUSDToken = 0xC25a3A3b969415c80451098fa907EC722572917F;
 		IERC20(underlying).safeApprove(_crvSUSDPool, MAX_UINT256);
-		whitelist[_crvSUSDPool][add_liquidity_4] = true;
-		whitelist[_crvSUSDPool][remove_liquidity_4] = true;
+		whitelist[_crvSUSDPool][add_liquidity_4] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_crvSUSDPool][remove_liquidity_4] = ALLOWED_NO_MSG_VALUE;
 
 		address _yearnSUSDPool = 0x5533ed0a3b83F70c3c4a1f69Ef5546D3D4713E44;
 		IERC20(_crvSUSDToken).safeApprove(_yearnSUSDPool, MAX_UINT256);
-		whitelist[_yearnSUSDPool][deposit] = true;
-		whitelist[_yearnSUSDPool][withdraw] = true;
+		whitelist[_yearnSUSDPool][deposit] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_yearnSUSDPool][withdraw] = ALLOWED_NO_MSG_VALUE;
 
 		address _crvSUSDWithdraw = 0xFCBa3E75865d2d561BE8D220616520c171F12851; // because crv frontend is misconfigured to think this is a lending pool
 		IERC20(_crvSUSDToken).safeApprove(_crvSUSDWithdraw, MAX_UINT256);
 		IERC20(underlying).safeApprove(_crvSUSDWithdraw, MAX_UINT256); // unneeded
-		whitelist[_crvSUSDWithdraw][add_liquidity_4] = true; // add_liquidity(uint256[4] _deposit_amounts, uint256 _min_mint_amount)
-		whitelist[_crvSUSDWithdraw][remove_liquidity_one_burn] = true; // remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 min_uamount, bool donate_dust)
+		whitelist[_crvSUSDWithdraw][add_liquidity_4] = ALLOWED_NO_MSG_VALUE; // add_liquidity(uint256[4] _deposit_amounts, uint256 _min_mint_amount)
+		whitelist[_crvSUSDWithdraw][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE; // remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 min_uamount, bool donate_dust)
 		////////////// END ALLOW crvSUDC & yEarn //////////////
 
 		////////////// ALLOW crvCOMP & yEarn //////////////
@@ -139,13 +139,13 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		address _crvCOMPToken = 0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2;
 		IERC20(underlying).safeApprove(_crvCOMPDeposit, MAX_UINT256);
 		IERC20(_crvCOMPToken).safeApprove(_crvCOMPDeposit, MAX_UINT256); // allow withdraws, lending pool
-		whitelist[_crvCOMPDeposit][add_liquidity_2] = true;
-		whitelist[_crvCOMPDeposit][remove_liquidity_one_burn] = true;
+		whitelist[_crvCOMPDeposit][add_liquidity_2] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_crvCOMPDeposit][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE;
 
 		address _yearnCOMPPool = 0x629c759D1E83eFbF63d84eb3868B564d9521C129;
 		IERC20(_crvCOMPToken).safeApprove(_crvCOMPDeposit, MAX_UINT256);
-		whitelist[_yearnCOMPPool][deposit] = true;
-		whitelist[_yearnCOMPPool][withdraw] = true;
+		whitelist[_yearnCOMPPool][deposit] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_yearnCOMPPool][withdraw] = ALLOWED_NO_MSG_VALUE;
 		////////////// END ALLOW crvCOMP & yEarn //////////////
 
 		////////////// ALLOW crvBUSD & yEarn //////////////
@@ -153,26 +153,26 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		address _crvBUSDToken = 0x3B3Ac5386837Dc563660FB6a0937DFAa5924333B;
 		IERC20(underlying).safeApprove(_crvBUSDDeposit, MAX_UINT256);
 		IERC20(_crvBUSDToken).safeApprove(_crvBUSDDeposit, MAX_UINT256);
-		whitelist[_crvBUSDDeposit][add_liquidity_4] = true;
-		whitelist[_crvBUSDDeposit][remove_liquidity_one_burn] = true;
+		whitelist[_crvBUSDDeposit][add_liquidity_4] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_crvBUSDDeposit][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE;
 
 		address _yearnBUSDPool = 0x2994529C0652D127b7842094103715ec5299bBed;
 		IERC20(_crvBUSDToken).safeApprove(_yearnBUSDPool, MAX_UINT256);
-		whitelist[_yearnBUSDPool][deposit] = true;
-		whitelist[_yearnBUSDPool][withdraw] = true;
+		whitelist[_yearnBUSDPool][deposit] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_yearnBUSDPool][withdraw] = ALLOWED_NO_MSG_VALUE;
 		////////////// END ALLOW crvBUSD & yEarn //////////////
 
 		////////////// ALLOW crvAave & yEarn //////////////
 		address _crvAavePool = 0xDeBF20617708857ebe4F679508E7b7863a8A8EeE; // new style lending pool w/o second approve needed... direct burn from msg.sender
 		address _crvAaveToken = 0xFd2a8fA60Abd58Efe3EeE34dd494cD491dC14900;
 		IERC20(underlying).safeApprove(_crvAavePool, MAX_UINT256);
-		whitelist[_crvAavePool][add_liquidity_u_3] = true;
-		whitelist[_crvAavePool][remove_liquidity_one_burn] = true;
+		whitelist[_crvAavePool][add_liquidity_u_3] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_crvAavePool][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE;
 
 		address _yearnAavePool = 0x03403154afc09Ce8e44C3B185C82C6aD5f86b9ab;
 		IERC20(_crvAaveToken).safeApprove(_yearnAavePool, MAX_UINT256);
-		whitelist[_yearnAavePool][deposit] = true;
-		whitelist[_yearnAavePool][withdraw] = true;
+		whitelist[_yearnAavePool][deposit] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_yearnAavePool][withdraw] = ALLOWED_NO_MSG_VALUE;
 		////////////// END ALLOW crvAave & yEarn //////////////
 
 		////////////// ALLOW crvYpool & yEarn //////////////
@@ -180,62 +180,49 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		address _crvYToken = 0xdF5e0e81Dff6FAF3A7e52BA697820c5e32D806A8;
 		IERC20(underlying).safeApprove(_crvYDeposit, MAX_UINT256);
 		IERC20(_crvYToken).safeApprove(_crvYDeposit, MAX_UINT256); // allow withdraws, lending pool
-		whitelist[_crvYDeposit][add_liquidity_4] = true;
-		whitelist[_crvYDeposit][remove_liquidity_one_burn] = true;
+		whitelist[_crvYDeposit][add_liquidity_4] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_crvYDeposit][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE;
 
 		address _yearnYPool = 0x5dbcF33D8c2E976c6b560249878e6F1491Bca25c; // yearnception
 		IERC20(_crvYToken).safeApprove(_yearnYPool, MAX_UINT256);
-		whitelist[_yearnYPool][deposit] = true;
-		whitelist[_yearnYPool][withdraw] = true;
+		whitelist[_yearnYPool][deposit] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_yearnYPool][withdraw] = ALLOWED_NO_MSG_VALUE;
 		////////////// END ALLOW crvYpool & yEarn //////////////
-
-		////////////// ALLOW crvSAave & yEarn //////////////
-		address _crvSAavePool = 0xEB16Ae0052ed37f479f7fe63849198Df1765a733; // new style lending pool w/o second approve needed... direct burn from msg.sender
-		address _crvSAaveToken = 0x02d341CcB60fAaf662bC0554d13778015d1b285C;
-		IERC20(underlying).safeApprove(_crvSAavePool, MAX_UINT256);
-		whitelist[_crvSAavePool][add_liquidity_u_2] = true;
-		whitelist[_crvSAavePool][remove_liquidity_one_burn] = true;
-
-		address _yearnSAavePool = 0xBacB69571323575C6a5A3b4F9EEde1DC7D31FBc1;
-		IERC20(_crvSAaveToken).safeApprove(_yearnSAavePool, MAX_UINT256);
-		whitelist[_yearnSAavePool][deposit] = true;
-		whitelist[_yearnSAavePool][withdraw] = true;
-		////////////// END ALLOW crvSAave & yEarn //////////////
 
 		////////////// ALLOW yEarn USDC //////////////
 		address _yearnUSDC = 0x5f18C75AbDAe578b483E5F43f12a39cF75b973a9;
 		IERC20(underlying).safeApprove(_yearnUSDC, MAX_UINT256);
-		whitelist[_yearnUSDC][deposit] = true;
-		whitelist[_yearnUSDC][withdraw] = true;
+		whitelist[_yearnUSDC][deposit] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_yearnUSDC][withdraw] = ALLOWED_NO_MSG_VALUE;
 		////////////// END ALLOW yEarn USDC //////////////
 
 		////////////// ALLOW AlphaHomoraV2 USDC //////////////
 		address _ahUSDC = 0x08bd64BFC832F1C2B3e07e634934453bA7Fa2db2;
 		IERC20(underlying).safeApprove(_ahUSDC, MAX_UINT256);
-		whitelist[_ahUSDC][deposit] = true;
-		whitelist[_ahUSDC][withdraw] = true;
-		whitelist[_ahUSDC][claim] = true; // claim ALPHA token reward
+		whitelist[_ahUSDC][deposit] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_ahUSDC][withdraw] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_ahUSDC][claim] = ALLOWED_NO_MSG_VALUE; // claim ALPHA token reward
 
 		address ALPHA_TOKEN = 0xa1faa113cbE53436Df28FF0aEe54275c13B40975;
 		address _1inchEx = 0x11111112542D85B3EF69AE05771c2dCCff4fAa26;
 		IERC20(ALPHA_TOKEN).safeApprove(_1inchEx, MAX_UINT256);
-		whitelist[_1inchEx][swap_erc20_1inch] = true; // ALPHA -> ETH
-		whitelist[_1inchEx][swap_one] = true;
+		whitelist[_1inchEx][swap_erc20_1inch] = ALLOWED_NO_MSG_VALUE; // ALPHA -> ETH
+		whitelist[_1inchEx][swap_one] = ALLOWED_NO_MSG_VALUE;
 		////////////// END ALLOW AlphaHomoraV2 USDC //////////////
 
 		////////////// ALLOW Compound USDC //////////////
 		address _compUSDC = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
 		IERC20(underlying).safeApprove(_compUSDC, MAX_UINT256);
-		whitelist[_compUSDC][mint_ctoken] = true;
-		whitelist[_compUSDC][redeem_ctoken] = true;
+		whitelist[_compUSDC][mint_ctoken] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_compUSDC][redeem_ctoken] = ALLOWED_NO_MSG_VALUE;
 
 		address _comptroller = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B; // claimComp
-		whitelist[_comptroller][claim_COMP] = true;
+		whitelist[_comptroller][claim_COMP] = ALLOWED_NO_MSG_VALUE;
 
 		address _COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888; // allow COMP sell on 1inch
 		IERC20(_COMP).safeApprove(_1inchEx, MAX_UINT256);
-		whitelist[_1inchEx][swap_erc20_1inch] = true; // COMP -> USDC
-		whitelist[_1inchEx][swap_one] = true;
+		whitelist[_1inchEx][swap_erc20_1inch] = ALLOWED_NO_MSG_VALUE; // COMP -> USDC
+		whitelist[_1inchEx][swap_one] = ALLOWED_NO_MSG_VALUE;
 		////////////// END ALLOW Compound USDC //////////////
 	}
 }

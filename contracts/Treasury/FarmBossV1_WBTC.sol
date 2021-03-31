@@ -55,26 +55,26 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 
 		IERC20(underlying).safeApprove(_compWBTC, MAX_UINT256);
 		// mint/redeem compBTC
-		whitelist[_compWBTC][mint_ctoken] = true;
-		whitelist[_compWBTC][redeem_ctoken] = true;
+		whitelist[_compWBTC][mint_ctoken] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_compWBTC][redeem_ctoken] = ALLOWED_NO_MSG_VALUE;
 		// allow collateral & mint COMP
-		whitelist[_comptroller][enter_markets] = true;
-		whitelist[_comptroller][exit_market] = true;
-		whitelist[_comptroller][claim_COMP] = true;
+		whitelist[_comptroller][enter_markets] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_comptroller][exit_market] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_comptroller][claim_COMP] = ALLOWED_NO_MSG_VALUE;
 		// borrow and repay, need to use helper repay contract
-		whitelist[_compETH][borrow] = true;
-		whitelist[_compEthRepayHelper][repay_behalf] = true;
+		whitelist[_compETH][borrow] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_compEthRepayHelper][repay_behalf] = ALLOWED_W_MSG_VALUE;
 
 		// stackETH deposit the loaned ETH from Compound
-		whitelist[_stackETH][deposit_eth] = true;
-		whitelist[_stackETH][withdraw_eth] = true;
+		whitelist[_stackETH][deposit_eth] = ALLOWED_W_MSG_VALUE;
+		whitelist[_stackETH][withdraw_eth] = ALLOWED_NO_MSG_VALUE;
 
 		// for selling COMP for more WBTC
 		address _COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888; // allow COMP sell on 1inch
 		address _1inchEx = 0x11111112542D85B3EF69AE05771c2dCCff4fAa26;
 		IERC20(_COMP).safeApprove(_1inchEx, MAX_UINT256);
-		whitelist[_1inchEx][swap_erc20_1inch] = true; // COMP -> USDC
-		whitelist[_1inchEx][swap_one] = true;
+		whitelist[_1inchEx][swap_erc20_1inch] = ALLOWED_NO_MSG_VALUE; // COMP -> USDC
+		whitelist[_1inchEx][swap_one] = ALLOWED_NO_MSG_VALUE;
 
 	}
 }
