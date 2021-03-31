@@ -55,6 +55,7 @@ abstract contract FarmBossV1 {
 	}
 
 	address payable public governance;
+	address public daoCouncilMultisig;
 	address public treasury;
 	address public underlying;
 
@@ -98,6 +99,12 @@ abstract contract FarmBossV1 {
 		governance = _new;
 	}
 
+	function setDaoCouncilMultisig(address _new) external {
+		require(msg.sender == governance || msg.sender == daoCouncilMultisig, "FARMBOSSV1: !(governance || multisig)");
+
+		daoCouncilMultisig = _new;
+	}
+
 	function getWhitelist(address _contract, bytes4 _fnSig) external view returns (uint256){
 		return whitelist[_contract][_fnSig];
 	}
@@ -112,6 +119,19 @@ abstract contract FarmBossV1 {
 
 			emit NewFarmer(_newFarmers[i]);
 		}
+		// remove farmers
+		for (uint256 j = 0; j < _rmFarmers.length; j++){
+			farmers[_rmFarmers[j]] = false;
+
+			emit RmFarmer(_rmFarmers[j]);
+		}
+	}
+
+	// callable by the DAO Council multisig, we can instantly remove a group of malicious farmers (no delay needed from DAO voting)
+	function emergencyRemoveFarmers(address[] calldata _rmFarmers) external {
+		require(msg.sender == daoCouncilMultisig, "FARMBOSSV1: !multisig");
+		require(_rmFarmers.length <= LOOP_LIMIT, "FARMBOSSV1: >LOOP_LIMIT"); // dont allow unbounded loops
+
 		// remove farmers
 		for (uint256 j = 0; j < _rmFarmers.length; j++){
 			farmers[_rmFarmers[j]] = false;
@@ -159,6 +179,26 @@ abstract contract FarmBossV1 {
 		}
 	}
 
+	// callable by the DAO Council multisig, we can instantly remove a group of malicious contracts / approvals (no delay needed from DAO voting)
+	function emergencyRemoveWhitelist(WhitelistData[] calldata _rmActions, Approves[] calldata _newDepprovals) external {
+		require(msg.sender == daoCouncilMultisig, "FARMBOSSV1: !multisig");
+		require(_rmActions.length.add(_newDepprovals.length) <= LOOP_LIMIT, "FARMBOSSV1: >LOOP_LIMIT"); // dont allow unbounded loops
+
+		// remove from whitelist
+		for (uint256 j = 0; j < _rmActions.length; j++){
+			whitelist[_rmActions[j].account][_rmActions[j].fnSig] = NOT_ALLOWED;
+
+			emit RmWhitelist(_rmActions[j].account, _rmActions[j].fnSig);
+		}
+		// de-approve these contracts
+		for (uint256 l = 0; l < _newDepprovals.length; l++){
+			IERC20(_newDepprovals[l].token).safeApprove(_newDepprovals[l].allow, 0);
+
+			emit RmApproval(_newDepprovals[l].token, _newDepprovals[l].allow);
+		}
+
+	}
+
 	function govExecute(address payable _target, uint256 _value, bytes calldata _data) external returns (bool, bytes memory){
 		require(msg.sender == governance, "FARMBOSSV1: !governance");
 
@@ -166,7 +206,7 @@ abstract contract FarmBossV1 {
 	}
 
 	function farmerExecute(address payable _target, uint256 _value, bytes calldata _data) external returns (bool, bytes memory){
-		require(farmers[msg.sender], "FARMBOSSV1: !farmer");
+		require(farmers[msg.sender] || msg.sender == daoCouncilMultisig, "FARMBOSSV1: !(farmer || multisig)");
 		
 		require(_checkContractAndFn(_target, _value, _data), "FARMBOSSV1: target.fn() not allowed. ask DAO for approval.");
 		return _execute(_target, _value, _data);
@@ -233,15 +273,15 @@ abstract contract FarmBossV1 {
 		return (_success, _returnData);
 	}
 
-	// we can call this function from farmer/govExecute, but let's make it easy
+	// we can call this function on the treasury from farmer/govExecute, but let's make it easy
 	function rebalanceUp(uint256 _amount, address _farmerRewards) external {
-		require(msg.sender == governance || farmers[msg.sender], "FARMBOSSV1: !(governance || farmer)");
+		require(msg.sender == governance || farmers[msg.sender] || msg.sender == daoCouncilMultisig, "FARMBOSSV1: !(governance || farmer || multisig)");
 
 		FarmTreasuryV1(treasury).rebalanceUp(_amount, _farmerRewards);
 	}
 
 	function rescue(address _token, uint256 _amount) external {
-        require(msg.sender == governance, "FARMTREASURYV1: !governance");
+        require(msg.sender == governance, "FARMBOSSV1: !governance");
 
         if (_token != address(0)){
             IERC20(_token).safeTransfer(governance, _amount);

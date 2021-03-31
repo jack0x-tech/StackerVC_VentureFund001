@@ -51,7 +51,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 	uint256 public baseToFarmer = 100;
 
 	// limits on rebalancing from the farmer, trying to negate errant rebalances
-	uint256 public rebalanceUpLimit = 150; // maximum of a 1.5% gain per rebalance
+	uint256 public rebalanceUpLimit = 100; // maximum of a 1.5% gain per rebalance
 	uint256 public rebalanceUpWaitTime = 23 hours;
 	uint256 public lastRebalanceUpTime;
 
@@ -281,7 +281,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		_verify(msg.sender, _amountUnderlying);
 		// try and catch the more obvious error of hot wallet being depleted, otherwise proceed
 		if (IERC20(underlyingContract).balanceOf(address(this)) < _amountUnderlying){
-			revert("Hot wallet balance depleted. Please try smaller withdraw or wait for rebalancing.");
+			revert("FARMTREASURYV1: Hot wallet balance depleted. Please try smaller withdraw or wait for rebalancing.");
 		}
 
 		uint256 _sharesToBurn = getSharesForUnderlying(_amountUnderlying);
