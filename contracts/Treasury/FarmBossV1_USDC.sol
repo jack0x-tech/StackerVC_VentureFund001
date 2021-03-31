@@ -45,11 +45,7 @@ contract FarmBossV1_USDC is FarmBossV1 {
 	bytes4 constant private redeem_ctoken = 0xdb006a75; // redeem(uint256 redeemTokens)
 	bytes4 constant private claim_COMP = 0x1c3db2e0; // claimComp(address holder, address[] cTokens)
 
-	// 1INCH EXCHANGE
-	bytes4 constant private swap_erc20_1inch = 0x7c025200; // swap(address, (address,address,address,address,uint256,uint256,uint256,bytes), bytes)
-	bytes4 constant private swap_one = 0x2e95b6c8; // unoswap(address srcToken, uint256 amount, uint256 minReturn, bytes32[])
-
-	constructor(address payable _governance, address _treasury, address _underlying) public FarmBossV1(_governance, _treasury, _underlying){
+	constructor(address payable _governance, address _daoMultisig, address _treasury, address _underlying) public FarmBossV1(_governance, _daoMultisig, _treasury, _underlying){
 	}
 
 	function _initFirstFarms() internal override {
@@ -204,10 +200,9 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		whitelist[_ahUSDC][claim] = ALLOWED_NO_MSG_VALUE; // claim ALPHA token reward
 
 		address ALPHA_TOKEN = 0xa1faa113cbE53436Df28FF0aEe54275c13B40975;
-		address _1inchEx = 0x11111112542D85B3EF69AE05771c2dCCff4fAa26;
-		IERC20(ALPHA_TOKEN).safeApprove(_1inchEx, MAX_UINT256);
-		whitelist[_1inchEx][swap_erc20_1inch] = ALLOWED_NO_MSG_VALUE; // ALPHA -> ETH
-		whitelist[_1inchEx][swap_one] = ALLOWED_NO_MSG_VALUE;
+		// swapping is done by a function in FarmBossV1 for safety
+		IERC20(ALPHA_TOKEN).safeApprove(SushiswapRouter, MAX_UINT256);
+		IERC20(ALPHA_TOKEN).safeApprove(UniswapRouter, MAX_UINT256);
 		////////////// END ALLOW AlphaHomoraV2 USDC //////////////
 
 		////////////// ALLOW Compound USDC //////////////
@@ -220,9 +215,8 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		whitelist[_comptroller][claim_COMP] = ALLOWED_NO_MSG_VALUE;
 
 		address _COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888; // allow COMP sell on 1inch
-		IERC20(_COMP).safeApprove(_1inchEx, MAX_UINT256);
-		whitelist[_1inchEx][swap_erc20_1inch] = ALLOWED_NO_MSG_VALUE; // COMP -> USDC
-		whitelist[_1inchEx][swap_one] = ALLOWED_NO_MSG_VALUE;
+		IERC20(_COMP).safeApprove(SushiswapRouter, MAX_UINT256);
+		IERC20(_COMP).safeApprove(UniswapRouter, MAX_UINT256);
 		////////////// END ALLOW Compound USDC //////////////
 	}
 }

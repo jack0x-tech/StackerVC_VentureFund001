@@ -18,7 +18,7 @@ contract FarmBossV1_WETH is FarmBossV1 {
 	using SafeMath for uint256;
 	using Address for address;
 
-	constructor(address payable _governance, address _treasury, address _underlying) public FarmBossV1(_governance, _treasury, _underlying){
+	constructor(address payable _governance, address _daoMultisig, address _treasury, address _underlying) public FarmBossV1(_governance, _daoMultisig, _treasury, _underlying){
 	}
 
 	function _initFirstFarms() internal override {
@@ -36,7 +36,7 @@ contract FarmBossV1_WETH is FarmBossV1 {
 		////////////// ALLOW WETH //////////////
 		bytes4 deposit_weth = 0xd0e30db0; // deposit()
 		bytes4 withdraw_weth = 0x2e1a7d4d; // withdraw(uint256)
-		address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+		// address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;  -- already in FarmBossV1
 		whitelist[WETH][deposit_weth] = ALLOWED_W_MSG_VALUE;
 		whitelist[WETH][withdraw_weth] = ALLOWED_NO_MSG_VALUE;
 		////////////// END ALLOW WETH //////////////
@@ -58,12 +58,8 @@ contract FarmBossV1_WETH is FarmBossV1 {
 
 		// for selling alpha. alpha is distributed 1x/week by a Uniswap Merkle distributor contract
 		address ALPHA_TOKEN = 0xa1faa113cbE53436Df28FF0aEe54275c13B40975;
-		address _1inchEx = 0x11111112542D85B3EF69AE05771c2dCCff4fAa26;
-		bytes4 swap_erc20_1inch = 0x7c025200; // swap(address, (address,address,address,address,uint256,uint256,uint256,bytes), bytes)
-		bytes4 swap_one = 0x2e95b6c8; // unoswap(address srcToken, uint256 amount, uint256 minReturn, bytes32[])
-		IERC20(ALPHA_TOKEN).safeApprove(_1inchEx, MAX_UINT256);
-		whitelist[_1inchEx][swap_erc20_1inch] = ALLOWED_NO_MSG_VALUE; // ALPHA -> ETH
-		whitelist[_1inchEx][swap_one] = ALLOWED_NO_MSG_VALUE;
+		IERC20(ALPHA_TOKEN).safeApprove(SushiswapRouter, MAX_UINT256);
+		IERC20(ALPHA_TOKEN).safeApprove(UniswapRouter, MAX_UINT256);
 		////////////// END ALLOW ALPHAHOMORAV2 //////////////
 
 		////////////// ALLOW RARI CAPITAL AUTO ROTATION //////////////

@@ -18,6 +18,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./FarmTreasuryV1.sol";
+import "../Interfaces/IUniswapRouterV2.sol";
 
 abstract contract FarmBossV1 {
 	using SafeERC20 for IERC20;
@@ -33,6 +34,9 @@ abstract contract FarmBossV1 {
 	uint256 constant internal NOT_ALLOWED = 0;
 	uint256 constant internal ALLOWED_NO_MSG_VALUE = 1;
 	uint256 constant internal ALLOWED_W_MSG_VALUE = 2; 
+
+	uint256 internal constant LOOP_LIMIT = 200;
+	uint256 internal constant MAX_UINT256 = 2**256 - 1; // aka: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 
 	// used in the whitelist mapping ^^^
 	// allowed to call function in whitelist, allowed to call function with msg.value in whitelist?
@@ -59,8 +63,10 @@ abstract contract FarmBossV1 {
 	address public treasury;
 	address public underlying;
 
-	uint256 internal constant LOOP_LIMIT = 200;
-	uint256 internal constant MAX_UINT256 = 2**256 - 1; // aka: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	// constant - if the addresses change, assume that the functions will be different too and this will need a rewrite
+	address public constant UniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;	
+	address public constant SushiswapRouter = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
+	address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
 	event NewFarmer(address _farmer);
 	event RmFarmer(address _farmer);
@@ -73,8 +79,9 @@ abstract contract FarmBossV1 {
 
 	event ExecuteStatus(bool _success, bytes _returnData);
 
-	constructor(address payable _governance, address _treasury, address _underlying) public {
+	constructor(address payable _governance, address _daoMultisig, address _treasury, address _underlying) public {
 		governance = _governance;
+		daoCouncilMultisig = _daoMultisig;
 		treasury = _treasury;
 		underlying = _underlying;
 
@@ -278,6 +285,34 @@ abstract contract FarmBossV1 {
 		require(msg.sender == governance || farmers[msg.sender] || msg.sender == daoCouncilMultisig, "FARMBOSSV1: !(governance || farmer || multisig)");
 
 		FarmTreasuryV1(treasury).rebalanceUp(_amount, _farmerRewards);
+	}
+
+	// is a Sushi/Uniswap wrapper to sell tokens for extra safety. This way, the swapping routes & destinations are checked & much safer than simply whitelisting the function
+	// the function takes the calldata directly as an input. this way, calling the function is very similar to a normal farming call
+	function sellExactTokensForUnderlyingToken(bytes calldata _data, bool _isSushi) external returns (uint[] memory amounts){
+		(uint256 amountIn, uint256 amountOutMin, address[] memory path, address to, uint256 deadline) = abi.decode(_data[4:], (uint256, uint256, address[], address, uint256));
+
+		// check the data to make sure it's an allowed sell
+		require(to == address(this), "FARMBOSSV1: invalid sell, to != address(this)");
+
+		// strictly require paths to be [token, WETH, underlying] 
+		// note: underlying can be WETH --> [token, WETH]
+		if (underlying == WETH){
+			require(path.length == 2, "FARMBOSSV1: path.length != 2");
+			require(path[1] == WETH, "FARMBOSSV1: invalid sell, output != underlying");
+		}
+		else {
+			require(path.length == 3, "FARMBOSSV1: path.length != 3");
+			require(path[1] == WETH, "FARMBOSSV1: path[1] != WETH");
+			require(path[2] == underlying, "FARMBOSSV1: invalid sell, output != underlying");
+		}
+
+		if (_isSushi){ // sell on Sushiswap
+			return IUniswapRouterV2(SushiswapRouter).swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
+		}
+		else { // sell on Uniswap
+			return IUniswapRouterV2(UniswapRouter).swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
+		}
 	}
 
 	function rescue(address _token, uint256 _amount) external {

@@ -18,7 +18,7 @@ contract FarmBossV1_TEST is FarmBossV1 {
 	using SafeMath for uint256;
 	using Address for address;
 
-	constructor(address payable _governance, address _treasury, address _underlying) public FarmBossV1(_governance, _treasury, _underlying){
+	constructor(address payable _governance, address _daoMultisig, address _treasury, address _underlying) public FarmBossV1(_governance, _daoMultisig, _treasury, _underlying){
 	}
 
 	// no first farms, this is just for testing 

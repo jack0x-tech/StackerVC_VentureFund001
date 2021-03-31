@@ -31,11 +31,7 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 	bytes4 constant private deposit_eth = 0x2d2da806; // depositETH(address)
 	bytes4 constant private withdraw_eth = 0xf14210a6; // withdrawETH(uint256)
 
-	// for selling COMP
-	bytes4 constant private swap_erc20_1inch = 0x7c025200; // swap(address, (address,address,address,address,uint256,uint256,uint256,bytes), bytes)
-	bytes4 constant private swap_one = 0x2e95b6c8; // unoswap(address srcToken, uint256 amount, uint256 minReturn, bytes32[])
-
-	constructor(address payable _governance, address _treasury, address _underlying) public FarmBossV1(_governance, _treasury, _underlying){
+	constructor(address payable _governance, address _daoMultisig, address _treasury, address _underlying) public FarmBossV1(_governance, _daoMultisig, _treasury, _underlying){
 	}
 
 	function _initFirstFarms() internal override {
@@ -71,10 +67,7 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 
 		// for selling COMP for more WBTC
 		address _COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888; // allow COMP sell on 1inch
-		address _1inchEx = 0x11111112542D85B3EF69AE05771c2dCCff4fAa26;
-		IERC20(_COMP).safeApprove(_1inchEx, MAX_UINT256);
-		whitelist[_1inchEx][swap_erc20_1inch] = ALLOWED_NO_MSG_VALUE; // COMP -> USDC
-		whitelist[_1inchEx][swap_one] = ALLOWED_NO_MSG_VALUE;
-
+		IERC20(_COMP).safeApprove(SushiswapRouter, MAX_UINT256);
+		IERC20(_COMP).safeApprove(UniswapRouter, MAX_UINT256);
 	}
 }
