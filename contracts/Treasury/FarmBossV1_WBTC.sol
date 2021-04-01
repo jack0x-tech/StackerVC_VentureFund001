@@ -49,7 +49,7 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 		// stackVaults
 		address _stackETH = 0x0572bf36dBD8BBF41ACfaA74139B20ED8a7C0366;
 
-		IERC20(underlying).safeApprove(_compWBTC, MAX_UINT256);
+		IERC20(underlying).safeApprove(_compWBTC, type(uint256).max);
 		// mint/redeem compBTC
 		whitelist[_compWBTC][mint_ctoken] = ALLOWED_NO_MSG_VALUE;
 		whitelist[_compWBTC][redeem_ctoken] = ALLOWED_NO_MSG_VALUE;
@@ -67,7 +67,7 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 
 		// for selling COMP for more WBTC
 		address _COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888; // allow COMP sell on 1inch
-		IERC20(_COMP).safeApprove(SushiswapRouter, MAX_UINT256);
-		IERC20(_COMP).safeApprove(UniswapRouter, MAX_UINT256);
+		IERC20(_COMP).safeApprove(SushiswapRouter, type(uint256).max);
+		IERC20(_COMP).safeApprove(UniswapRouter, type(uint256).max);
 	}
 }

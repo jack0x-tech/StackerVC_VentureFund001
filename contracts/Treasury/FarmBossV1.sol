@@ -36,7 +36,6 @@ abstract contract FarmBossV1 {
 	uint256 constant internal ALLOWED_W_MSG_VALUE = 2; 
 
 	uint256 internal constant LOOP_LIMIT = 200;
-	uint256 internal constant MAX_UINT256 = 2**256 - 1; // aka: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 
 	// used in the whitelist mapping ^^^
 	// allowed to call function in whitelist, allowed to call function with msg.value in whitelist?
@@ -77,7 +76,8 @@ abstract contract FarmBossV1 {
 	event NewApproval(address _token, address _contract);
 	event RmApproval(address _token, address _contract);
 
-	event ExecuteStatus(bool _success, bytes _returnData);
+	event ExecuteSuccess(bytes _returnData);
+	event ExecuteERROR(bytes _returnData);
 
 	constructor(address payable _governance, address _daoMultisig, address _treasury, address _underlying) public {
 		governance = _governance;
@@ -87,7 +87,7 @@ abstract contract FarmBossV1 {
 
 		farmers[msg.sender] = true;
 		// no need to set to zero first on safeApprove, is brand new contract
-		IERC20(_underlying).safeApprove(_treasury, MAX_UINT256); // treasury has full control over underlying in this contract
+		IERC20(_underlying).safeApprove(_treasury, type(uint256).max); // treasury has full control over underlying in this contract
 
 		_initFirstFarms();
 	}
@@ -174,7 +174,7 @@ abstract contract FarmBossV1 {
 		// approve safely, needs to be set to zero, then max.
 		for (uint256 k = 0; k < _newApprovals.length; k++){
 			IERC20(_newApprovals[k].token).safeApprove(_newApprovals[k].allow, 0);
-			IERC20(_newApprovals[k].token).safeApprove(_newApprovals[k].allow, MAX_UINT256);
+			IERC20(_newApprovals[k].token).safeApprove(_newApprovals[k].allow, type(uint256).max);
 
 			emit NewApproval(_newApprovals[k].token, _newApprovals[k].allow);
 		}
@@ -209,7 +209,7 @@ abstract contract FarmBossV1 {
 	function govExecute(address payable _target, uint256 _value, bytes calldata _data) external returns (bool, bytes memory){
 		require(msg.sender == governance, "FARMBOSSV1: !governance");
 
-		 return _execute(_target, _value, _data);
+		return _execute(_target, _value, _data);
 	}
 
 	function farmerExecute(address payable _target, uint256 _value, bytes calldata _data) external returns (bool, bytes memory){
@@ -275,7 +275,12 @@ abstract contract FarmBossV1 {
 			(_success, _returnData) = _target.call{value: _value}(_data);
 		}
 
-		emit ExecuteStatus(_success, _returnData);
+		if (_success){
+			emit ExecuteSuccess(_returnData);
+		}
+		else {
+			emit ExecuteERROR(_returnData);
+		}
 
 		return (_success, _returnData);
 	}
@@ -299,7 +304,7 @@ abstract contract FarmBossV1 {
 		// note: underlying can be WETH --> [token, WETH]
 		if (underlying == WETH){
 			require(path.length == 2, "FARMBOSSV1: path.length != 2");
-			require(path[1] == WETH, "FARMBOSSV1: invalid sell, output != underlying");
+			require(path[1] == WETH, "FARMBOSSV1: WETH invalid sell, output != underlying");
 		}
 		else {
 			require(path.length == 3, "FARMBOSSV1: path.length != 3");

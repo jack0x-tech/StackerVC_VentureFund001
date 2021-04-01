@@ -58,8 +58,8 @@ contract FarmBossV1_WETH is FarmBossV1 {
 
 		// for selling alpha. alpha is distributed 1x/week by a Uniswap Merkle distributor contract
 		address ALPHA_TOKEN = 0xa1faa113cbE53436Df28FF0aEe54275c13B40975;
-		IERC20(ALPHA_TOKEN).safeApprove(SushiswapRouter, MAX_UINT256);
-		IERC20(ALPHA_TOKEN).safeApprove(UniswapRouter, MAX_UINT256);
+		IERC20(ALPHA_TOKEN).safeApprove(SushiswapRouter, type(uint256).max);
+		IERC20(ALPHA_TOKEN).safeApprove(UniswapRouter, type(uint256).max);
 		////////////// END ALLOW ALPHAHOMORAV2 //////////////
 
 		////////////// ALLOW RARI CAPITAL AUTO ROTATION //////////////
@@ -81,7 +81,7 @@ contract FarmBossV1_WETH is FarmBossV1 {
 		address _yearnSETHPool = 0x986b4AFF588a109c09B50A03f42E4110E29D353F;
 		bytes4 deposit_yearn = 0xb6b55f25; // deposit(uint256 _amount)
 		bytes4 withdraw_yearn = 0x2e1a7d4d; // withdraw(uint256 _shares)
-		IERC20(_crvSETHToken).safeApprove(_yearnSETHPool, MAX_UINT256);
+		IERC20(_crvSETHToken).safeApprove(_yearnSETHPool, type(uint256).max);
 		whitelist[_yearnSETHPool][deposit_yearn] = ALLOWED_NO_MSG_VALUE;
 		whitelist[_yearnSETHPool][withdraw_yearn] = ALLOWED_NO_MSG_VALUE;
 
@@ -91,7 +91,7 @@ contract FarmBossV1_WETH is FarmBossV1 {
 		whitelist[_crvStETHPool][remove_liquidity_one] = ALLOWED_NO_MSG_VALUE;
 
 		address _yearnStETHPool = 0xdCD90C7f6324cfa40d7169ef80b12031770B4325;
-		IERC20(_crvStETHToken).safeApprove(_yearnStETHPool, MAX_UINT256);
+		IERC20(_crvStETHToken).safeApprove(_yearnStETHPool, type(uint256).max);
 		whitelist[_yearnStETHPool][deposit_yearn] = ALLOWED_NO_MSG_VALUE;
 		whitelist[_yearnStETHPool][withdraw_yearn] = ALLOWED_NO_MSG_VALUE;
 		////////////// END ALLOW CRV & YEARN //////////////
