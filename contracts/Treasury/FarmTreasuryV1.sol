@@ -178,8 +178,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		// store some important info for this deposit, that will be checked on withdraw/transfer of tokens
 		_storeDepositInfo(msg.sender, _amountUnderlying);
 
-		emit Transfer(address(0), msg.sender, _amountUnderlying);
-
 		// emit deposit w/ referral event... can't refer yourself
 		if (_referral != msg.sender){
 			emit Deposit(msg.sender, _amountUnderlying, _referral);
@@ -187,6 +185,8 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		else {
 			emit Deposit(msg.sender, _amountUnderlying, address(0));
 		}
+
+		emit Transfer(address(0), msg.sender, _amountUnderlying);
 	}
 
 	function _storeDepositInfo(address _account, uint256 _amountUnderlying) internal {
