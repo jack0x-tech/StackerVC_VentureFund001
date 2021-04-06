@@ -36,6 +36,8 @@ abstract contract FarmBossV1 {
 	uint256 constant internal ALLOWED_W_MSG_VALUE = 2; 
 
 	uint256 internal constant LOOP_LIMIT = 200;
+	uint256 public constant max = 10000;
+	uint256 public CRVTokenTake = 1500; // pct of max
 
 	// used in the whitelist mapping ^^^
 	// allowed to call function in whitelist, allowed to call function with msg.value in whitelist?
@@ -66,6 +68,7 @@ abstract contract FarmBossV1 {
 	address public constant UniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;	
 	address public constant SushiswapRouter = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
 	address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+	address public constant CRVToken = 0xD533a949740bb3306d119CC777fa900bA034cd52;
 
 	event NewFarmer(address _farmer);
 	event RmFarmer(address _farmer);
@@ -110,6 +113,13 @@ abstract contract FarmBossV1 {
 		require(msg.sender == governance || msg.sender == daoCouncilMultisig, "FARMBOSSV1: !(governance || multisig)");
 
 		daoCouncilMultisig = _new;
+	}
+
+	function setCRVTokenTake(uint256 _new) external {
+		require(msg.sender == governance, "FARMBOSSV1: !governance");
+		require(_new <= max.div(2), "FARMBOSSV1: >half CRV to take");
+
+		CRVTokenTake = _new;
 	}
 
 	function getWhitelist(address _contract, bytes4 _fnSig) external view returns (uint256){
@@ -203,7 +213,6 @@ abstract contract FarmBossV1 {
 
 			emit RmApproval(_newDepprovals[l].token, _newDepprovals[l].allow);
 		}
-
 	}
 
 	function govExecute(address payable _target, uint256 _value, bytes calldata _data) external returns (bool, bytes memory){
@@ -229,8 +238,6 @@ abstract contract FarmBossV1 {
 	// then a "safe" wrapper contract must be made, ie: you can call Uniswap but "add a send is disabled, only msg.sender in this field"
 	// strategies must be checked carefully so that farmers cannot take control of assets. trustless farming!
 	function _checkContractAndFn(address _target, uint256 _value, bytes calldata _data) internal view returns (bool) {
-
-		_value; // squelch, we don't check value in V1
 
 		bytes4 _fnSig;
 		if (_data.length < 4){ // we are calling a payable function, or the data is otherwise invalid (need 4 bytes for any fn call)
@@ -295,6 +302,8 @@ abstract contract FarmBossV1 {
 	// is a Sushi/Uniswap wrapper to sell tokens for extra safety. This way, the swapping routes & destinations are checked & much safer than simply whitelisting the function
 	// the function takes the calldata directly as an input. this way, calling the function is very similar to a normal farming call
 	function sellExactTokensForUnderlyingToken(bytes calldata _data, bool _isSushi) external returns (uint[] memory amounts){
+		require(msg.sender == governance || farmers[msg.sender] || msg.sender == daoCouncilMultisig, "FARMBOSSV1: !(governance || farmer || multisig)");
+
 		(uint256 amountIn, uint256 amountOutMin, address[] memory path, address to, uint256 deadline) = abi.decode(_data[4:], (uint256, uint256, address[], address, uint256));
 
 		// check the data to make sure it's an allowed sell
@@ -310,6 +319,17 @@ abstract contract FarmBossV1 {
 			require(path.length == 3, "FARMBOSSV1: path.length != 3");
 			require(path[1] == WETH, "FARMBOSSV1: path[1] != WETH");
 			require(path[2] == underlying, "FARMBOSSV1: invalid sell, output != underlying");
+		}
+
+		// DAO takes some percentage of CRVToken pre-sell as part of a long term strategy 
+		if (path[0] == CRVToken && CRVTokenTake > 0){
+			uint256 _amtTake = amountIn.mul(CRVTokenTake).div(max); // take some portion, and send to governance
+
+			// redo the swap input variables, to account for the amount taken
+			amountIn = amountIn.sub(_amtTake);
+			amountOutMin = amountOutMin.mul(max.sub(CRVTokenTake)).div(max); // reduce the amountOutMin by the same ratio, therefore target slippage pct is the same
+
+			IERC20(CRVToken).safeTransfer(governance, _amtTake);
 		}
 
 		if (_isSushi){ // sell on Sushiswap

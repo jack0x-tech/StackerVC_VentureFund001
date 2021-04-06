@@ -138,7 +138,7 @@ contract FarmBossV1_WETH is FarmBossV1 {
 
 		emit NewWhitelist(_crvStETHGauge, claim_rewards, ALLOWED_NO_MSG_VALUE);
 
-		address CRVToken = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+		// address CRVToken = 0xD533a949740bb3306d119CC777fa900bA034cd52; -- already in FarmBossV1
 		address LDOToken = 0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32;
 		IERC20(CRVToken).safeApprove(SushiswapRouter, type(uint256).max);
 		IERC20(CRVToken).safeApprove(UniswapRouter, type(uint256).max);
