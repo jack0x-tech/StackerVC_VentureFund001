@@ -82,6 +82,8 @@ abstract contract FarmBossV1 {
 		underlying = _underlying;
 
 		farmers[msg.sender] = true;
+		emit NewFarmer(msg.sender);
+		
 		// no need to set to zero first on safeApprove, is brand new contract
 		IERC20(_underlying).safeApprove(_treasury, type(uint256).max); // treasury has full control over underlying in this contract
 
