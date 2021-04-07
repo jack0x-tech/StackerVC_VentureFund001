@@ -63,6 +63,16 @@ contract("test FarmBossV1", async (accounts) => {
 		assert(await _farmboss.farmers(FARMER_2));
 	});
 
+	it("should emergency remove farmer from dao multisig", async () => {
+		let _underlying = await _initUnderlying();
+		let _treasury = await _initTreasury(_underlying);
+		let _farmboss = await _initFarmBoss(_underlying, _treasury);
+
+		await _farmboss.emergencyRemoveFarmers([FARMER], {from: DAOMSIG});
+
+		assert(! await _farmboss.farmers(FARMER));
+	});
+
 	it("should add/remove whitelist", async () => {
 		let _underlying = await _initUnderlying();
 		let _treasury = await _initTreasury(_underlying);
@@ -83,6 +93,19 @@ contract("test FarmBossV1", async (accounts) => {
 		await _farmboss.changeWhitelist([{account: USER, fnSig: FALLBACK_FN, valueAllowed: false}], [], [], [], {from: GOVERNANCE});
 
 		assert.equal("1", (await _farmboss.getWhitelist(USER, FALLBACK_FN)).toString()); // 1 -> msg.value NOT allowed
+	});
+
+	it("should add, then emergency remove whitelist from dao multisig", async () => {
+		let _underlying = await _initUnderlying();
+		let _treasury = await _initTreasury(_underlying);
+		let _farmboss = await _initFarmBoss(_underlying, _treasury);
+
+		await _farmboss.changeWhitelist([{account: USER, fnSig: FALLBACK_FN, valueAllowed: true}], [], [{token: _underlying.address, allow: USER}], [], {from: GOVERNANCE});
+
+		// emergency remove
+		await _farmboss.emergencyRemoveWhitelist([{account: USER, fnSig: FALLBACK_FN, valueAllowed: false}], [{token: _underlying.address, allow: USER}], {from: DAOMSIG})
+		assert.equal("0", (await _farmboss.getWhitelist(USER, FALLBACK_FN)).toString());
+		assert.equal("0", (await _underlying.allowance(_farmboss.address, USER)).toString());
 	});
 
 	it("should add whitelist, then allow farmer execute", async () => {
