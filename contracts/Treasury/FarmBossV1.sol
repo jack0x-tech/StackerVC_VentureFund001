@@ -39,13 +39,6 @@ abstract contract FarmBossV1 {
 	uint256 public constant max = 10000;
 	uint256 public CRVTokenTake = 1500; // pct of max
 
-	// used in the whitelist mapping ^^^
-	// allowed to call function in whitelist, allowed to call function with msg.value in whitelist?
-	struct WhitelistInfo {
-		bool allowed;
-		bool valueAllowed;
-	}
-
 	// for passing to functions more cleanly
 	struct WhitelistData {
 		address account;
@@ -116,7 +109,7 @@ abstract contract FarmBossV1 {
 	}
 
 	function setCRVTokenTake(uint256 _new) external {
-		require(msg.sender == governance, "FARMBOSSV1: !governance");
+		require(msg.sender == governance || msg.sender == daoCouncilMultisig, "FARMBOSSV1: !(governance || multisig)");
 		require(_new <= max.div(2), "FARMBOSSV1: >half CRV to take");
 
 		CRVTokenTake = _new;
@@ -163,17 +156,7 @@ abstract contract FarmBossV1 {
 
 		// add to whitelist, or change a whitelist entry if want to allow/disallow msg.value
 		for (uint256 i = 0; i < _newActions.length; i++){
-			// if the valueAllowed, then mark this & emit event, same for function allowed BUT no value allowed
-			if (_newActions[i].valueAllowed){
-				whitelist[_newActions[i].account][_newActions[i].fnSig] = ALLOWED_W_MSG_VALUE;
-
-				emit NewWhitelist(_newActions[i].account, _newActions[i].fnSig, ALLOWED_W_MSG_VALUE);
-			}
-			else {
-				whitelist[_newActions[i].account][_newActions[i].fnSig] = ALLOWED_NO_MSG_VALUE;
-
-				emit NewWhitelist(_newActions[i].account, _newActions[i].fnSig, ALLOWED_NO_MSG_VALUE);
-			}
+			_addWhitelist(_newActions[i].account, _newActions[i].fnSig, _newActions[i].valueAllowed);
 		}
 		// remove from whitelist
 		for (uint256 j = 0; j < _rmActions.length; j++){
@@ -183,10 +166,7 @@ abstract contract FarmBossV1 {
 		}
 		// approve safely, needs to be set to zero, then max.
 		for (uint256 k = 0; k < _newApprovals.length; k++){
-			IERC20(_newApprovals[k].token).safeApprove(_newApprovals[k].allow, 0);
-			IERC20(_newApprovals[k].token).safeApprove(_newApprovals[k].allow, type(uint256).max);
-
-			emit NewApproval(_newApprovals[k].token, _newApprovals[k].allow);
+			_approveMax(_newApprovals[k].token, _newApprovals[k].allow);
 		}
 		// de-approve these contracts
 		for (uint256 l = 0; l < _newDepprovals.length; l++){
@@ -194,6 +174,24 @@ abstract contract FarmBossV1 {
 
 			emit RmApproval(_newDepprovals[l].token, _newDepprovals[l].allow);
 		}
+	}
+
+	function _addWhitelist(address _contract, bytes4 _fnSig, bool _msgValueAllowed) internal {
+		if (_msgValueAllowed){
+			whitelist[_contract][_fnSig] = ALLOWED_W_MSG_VALUE;
+			emit NewWhitelist(_contract, _fnSig, ALLOWED_W_MSG_VALUE);
+		}
+		else {
+			whitelist[_contract][_fnSig] = ALLOWED_NO_MSG_VALUE;
+			emit NewWhitelist(_contract, _fnSig, ALLOWED_NO_MSG_VALUE);
+		}
+	}
+
+	function _approveMax(address _token, address _account) internal {
+		IERC20(_token).safeApprove(_account, 0);
+		IERC20(_token).safeApprove(_account, type(uint256).max);
+
+		emit NewApproval(_token, _account);
 	}
 
 	// callable by the DAO Council multisig, we can instantly remove a group of malicious contracts / approvals (no delay needed from DAO voting)

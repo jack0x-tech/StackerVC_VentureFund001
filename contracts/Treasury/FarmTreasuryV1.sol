@@ -258,7 +258,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 	function getLockedAmount(address _account) public view returns (uint256) {
 		DepositInfo memory _existingInfo = userDeposits[_account];
 		return _getLockedAmount(_account, _existingInfo.amountUnderlyingLocked, _existingInfo.timestampDeposit, _existingInfo.timestampUnlocked);
-
 	}
 
 	// the locked amount linearly decreases until the timestampUnlocked time, then it's zero
@@ -347,8 +346,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 		(bool _fundsNeeded, uint256 _amountChange) = _calcHotWallet();
 		_rebalanceHot(_fundsNeeded, _amountChange); // if the hot wallet rebalance fails, revert() the entire function
 		// end logic
-
-		
 
 		return (_fundsNeeded, _amountChange); // in case we need them, FE simulations and such
 	}

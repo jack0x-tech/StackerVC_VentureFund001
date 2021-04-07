@@ -93,210 +93,132 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		////////////// ALLOW crv3pool //////////////
 		address _crv3Pool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
 		address _crv3PoolToken = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
-		IERC20(underlying).safeApprove(_crv3Pool, type(uint256).max); // can set directly to value, called on contract init
-		whitelist[_crv3Pool][add_liquidity_3] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crv3Pool][remove_liquidity_one] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(underlying, _crv3Pool);
-		emit NewWhitelist(_crv3Pool, add_liquidity_3, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crv3Pool, remove_liquidity_one, ALLOWED_NO_MSG_VALUE);
+		_approveMax(underlying, _crv3Pool);
+		_addWhitelist(_crv3Pool, add_liquidity_3, false);
+		_addWhitelist(_crv3Pool, remove_liquidity_one, false);
 
 		////////////// ALLOW crv3 Gauge //////////////
 		address _crv3Gauge = 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A;
-		IERC20(_crv3PoolToken).safeApprove(_crv3Gauge, type(uint256).max);
-		whitelist[_crv3Gauge][deposit_gauge] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crv3Gauge][withdraw_gauge] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(_crv3PoolToken, _crv3Gauge);
-		emit NewWhitelist(_crv3Gauge, deposit_gauge, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crv3Gauge, withdraw_gauge, ALLOWED_NO_MSG_VALUE);
+		_approveMax(_crv3PoolToken, _crv3Gauge);
+		_addWhitelist(_crv3Pool, deposit_gauge, false);
+		_addWhitelist(_crv3Pool, withdraw_gauge, false);
 
 		////////////// ALLOW crvSUSD Pool //////////////
 		// deposit USDC to SUSDpool, receive _crvSUSDToken
 		// this is a weird pool, like it was configured for lending accidentally... we will allow the swap and zap contract both
 		address _crvSUSDPool = 0xA5407eAE9Ba41422680e2e00537571bcC53efBfD;
 		address _crvSUSDToken = 0xC25a3A3b969415c80451098fa907EC722572917F;
-		IERC20(underlying).safeApprove(_crvSUSDPool, type(uint256).max);
-		whitelist[_crvSUSDPool][add_liquidity_4] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvSUSDPool][remove_liquidity_4] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(underlying, _crvSUSDPool);
-		emit NewWhitelist(_crvSUSDPool, add_liquidity_4, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvSUSDPool, remove_liquidity_4, ALLOWED_NO_MSG_VALUE);
+		_approveMax(underlying, _crvSUSDPool);
+		_addWhitelist(_crvSUSDPool, add_liquidity_4, false);
+		_addWhitelist(_crvSUSDPool, remove_liquidity_4, false);
 
 		address _crvSUSDWithdraw = 0xFCBa3E75865d2d561BE8D220616520c171F12851; // because crv frontend is misconfigured to think this is a lending pool
-		IERC20(underlying).safeApprove(_crvSUSDWithdraw, type(uint256).max); // unneeded
-		IERC20(_crvSUSDToken).safeApprove(_crvSUSDWithdraw, type(uint256).max);
-		whitelist[_crvSUSDWithdraw][add_liquidity_4] = ALLOWED_NO_MSG_VALUE; // add_liquidity(uint256[4] _deposit_amounts, uint256 _min_mint_amount)
-		whitelist[_crvSUSDWithdraw][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE; // remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 min_uamount, bool donate_dust)
-
-		emit NewApproval(underlying, _crvSUSDWithdraw);
-		emit NewApproval(_crvSUSDToken, _crvSUSDWithdraw);
-		emit NewWhitelist(_crvSUSDWithdraw, add_liquidity_4, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvSUSDWithdraw, remove_liquidity_one_burn, ALLOWED_NO_MSG_VALUE);
+		_approveMax(underlying, _crvSUSDWithdraw);
+		_approveMax(_crvSUSDToken, _crvSUSDWithdraw);
+		_addWhitelist(_crvSUSDWithdraw, add_liquidity_4, false);
+		_addWhitelist(_crvSUSDWithdraw, remove_liquidity_one_burn, false);
 
 		////////////// ALLOW crvSUSD Gauge, SNX REWARDS //////////////
 		address _crvSUSDGauge = 0xA90996896660DEcC6E997655E065b23788857849;
-		IERC20(_crvSUSDToken).safeApprove(_crvSUSDGauge, type(uint256).max);
-		whitelist[_crvSUSDGauge][deposit_gauge] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvSUSDGauge][withdraw_gauge] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvSUSDGauge][claim_rewards] = ALLOWED_NO_MSG_VALUE; // claiming SNX rewards
+		_approveMax(_crvSUSDToken, _crvSUSDGauge);
+		_addWhitelist(_crvSUSDGauge, deposit_gauge, false);
+		_addWhitelist(_crvSUSDGauge, withdraw_gauge, false);
+		_addWhitelist(_crvSUSDGauge, claim_rewards, false);
 
 		address _SNXToken = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F;
-		IERC20(_SNXToken).safeApprove(SushiswapRouter, type(uint256).max);
-		IERC20(_SNXToken).safeApprove(UniswapRouter, type(uint256).max);
-
-		emit NewApproval(_SNXToken, SushiswapRouter);
-		emit NewApproval(_SNXToken, UniswapRouter);
+		_approveMax(_SNXToken, SushiswapRouter);
+		_approveMax(_SNXToken, UniswapRouter);
 
 		////////////// ALLOW crvCOMP Pool //////////////
 		address _crvCOMPDeposit = 0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06;
 		address _crvCOMPToken = 0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2;
-		IERC20(underlying).safeApprove(_crvCOMPDeposit, type(uint256).max);
-		IERC20(_crvCOMPToken).safeApprove(_crvCOMPDeposit, type(uint256).max); // allow withdraws, lending pool
-		whitelist[_crvCOMPDeposit][add_liquidity_2] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvCOMPDeposit][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(underlying, _crvCOMPDeposit);
-		emit NewApproval(_crvCOMPToken, _crvCOMPDeposit);
-		emit NewWhitelist(_crvCOMPDeposit, add_liquidity_2, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvCOMPDeposit, remove_liquidity_one_burn, ALLOWED_NO_MSG_VALUE);
+		_approveMax(underlying, _crvCOMPDeposit);
+		_approveMax(_crvCOMPToken, _crvCOMPDeposit); // allow withdraws, lending pool
+		_addWhitelist(_crvCOMPDeposit, add_liquidity_2, false);
+		_addWhitelist(_crvCOMPDeposit, remove_liquidity_one_burn, false);
 
 		////////////// ALLOW crvCOMP Gauge //////////////
 		address _crvCOMPGauge = 0x7ca5b0a2910B33e9759DC7dDB0413949071D7575;
-		IERC20(_crvCOMPToken).safeApprove(_crvCOMPGauge, type(uint256).max);
-		whitelist[_crvCOMPGauge][deposit_gauge] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvCOMPGauge][withdraw_gauge] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(_crvCOMPToken, _crvCOMPGauge);
-		emit NewWhitelist(_crvCOMPGauge, deposit_gauge, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvCOMPGauge, withdraw_gauge, ALLOWED_NO_MSG_VALUE);
+		_approveMax(_crvCOMPToken, _crvCOMPGauge);
+		_addWhitelist(_crvCOMPGauge, deposit_gauge, false);
+		_addWhitelist(_crvCOMPGauge, withdraw_gauge, false);
 
 		////////////// ALLOW crvBUSD Pool //////////////
 		address _crvBUSDDeposit = 0xb6c057591E073249F2D9D88Ba59a46CFC9B59EdB;
 		address _crvBUSDToken = 0x3B3Ac5386837Dc563660FB6a0937DFAa5924333B;
-		IERC20(underlying).safeApprove(_crvBUSDDeposit, type(uint256).max);
-		IERC20(_crvBUSDToken).safeApprove(_crvBUSDDeposit, type(uint256).max);
-		whitelist[_crvBUSDDeposit][add_liquidity_4] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvBUSDDeposit][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(underlying, _crvBUSDDeposit);
-		emit NewApproval(_crvBUSDToken, _crvBUSDDeposit);
-		emit NewWhitelist(_crvBUSDDeposit, add_liquidity_4, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvBUSDDeposit, remove_liquidity_one_burn, ALLOWED_NO_MSG_VALUE);
+		_approveMax(underlying, _crvBUSDDeposit);
+		_approveMax(_crvBUSDToken, _crvBUSDDeposit);
+		_addWhitelist(_crvBUSDDeposit, add_liquidity_4, false);
+		_addWhitelist(_crvBUSDDeposit, remove_liquidity_one_burn, false);
 
 		////////////// ALLOW crvBUSD Gauge //////////////
 		address _crvBUSDGauge = 0x69Fb7c45726cfE2baDeE8317005d3F94bE838840;
-		IERC20(_crvBUSDToken).safeApprove(_crvBUSDGauge, type(uint256).max);
-		whitelist[_crvBUSDGauge][deposit_gauge] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvBUSDGauge][withdraw_gauge] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(_crvBUSDToken, _crvBUSDGauge);
-		emit NewWhitelist(_crvBUSDGauge, deposit_gauge, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvBUSDGauge, withdraw_gauge, ALLOWED_NO_MSG_VALUE);
+		_approveMax(_crvBUSDToken, _crvBUSDGauge);
+		_addWhitelist(_crvBUSDGauge, deposit_gauge, false);
+		_addWhitelist(_crvBUSDGauge, withdraw_gauge, false);
 
 		////////////// ALLOW crvAave Pool //////////////
 		address _crvAavePool = 0xDeBF20617708857ebe4F679508E7b7863a8A8EeE; // new style lending pool w/o second approve needed... direct burn from msg.sender
 		address _crvAaveToken = 0xFd2a8fA60Abd58Efe3EeE34dd494cD491dC14900;
-		IERC20(underlying).safeApprove(_crvAavePool, type(uint256).max);
-		whitelist[_crvAavePool][add_liquidity_u_3] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvAavePool][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(underlying, _crvAavePool);
-		emit NewWhitelist(_crvAavePool, add_liquidity_u_3, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvAavePool, remove_liquidity_one_burn, ALLOWED_NO_MSG_VALUE);
+		_approveMax(underlying, _crvAavePool);
+		_addWhitelist(_crvAavePool, add_liquidity_u_3, false);
+		_addWhitelist(_crvAavePool, remove_liquidity_one_burn, false);
 
 		////////////// ALLOW crvAave Gauge //////////////
 		address _crvAaveGauge = 0xd662908ADA2Ea1916B3318327A97eB18aD588b5d;
-		IERC20(_crvAaveToken).safeApprove(_crvAaveGauge, type(uint256).max);
-		whitelist[_crvAaveGauge][deposit_gauge] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvAaveGauge][withdraw_gauge] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(_crvAaveToken, _crvAaveGauge);
-		emit NewWhitelist(_crvAaveGauge, deposit_gauge, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvAaveGauge, withdraw_gauge, ALLOWED_NO_MSG_VALUE);
+		_approveMax(_crvAaveToken, _crvAaveGauge);
+		_addWhitelist(_crvAaveGauge, deposit_gauge, false);
+		_addWhitelist(_crvAaveGauge, withdraw_gauge, false);
 
 		////////////// ALLOW crvYpool //////////////
 		address _crvYDeposit = 0xbBC81d23Ea2c3ec7e56D39296F0cbB648873a5d3;
 		address _crvYToken = 0xdF5e0e81Dff6FAF3A7e52BA697820c5e32D806A8;
-		IERC20(underlying).safeApprove(_crvYDeposit, type(uint256).max);
-		IERC20(_crvYToken).safeApprove(_crvYDeposit, type(uint256).max); // allow withdraws, lending pool
-		whitelist[_crvYDeposit][add_liquidity_4] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvYDeposit][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(underlying, _crvYDeposit);
-		emit NewApproval(_crvYToken, _crvYDeposit);
-		emit NewWhitelist(_crvYDeposit, add_liquidity_4, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvYDeposit, remove_liquidity_one_burn, ALLOWED_NO_MSG_VALUE);
+		_approveMax(underlying, _crvYDeposit);
+		_approveMax(_crvYToken, _crvYDeposit); // allow withdraws, lending pool
+		_addWhitelist(_crvYDeposit, add_liquidity_4, false);
+		_addWhitelist(_crvYDeposit, remove_liquidity_one_burn, false);
 
 		////////////// ALLOW crvY Gauge //////////////
 		address _crvYGauge = 0xFA712EE4788C042e2B7BB55E6cb8ec569C4530c1;
-		IERC20(_crvYToken).safeApprove(_crvYGauge, type(uint256).max);
-		whitelist[_crvYGauge][deposit_gauge] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvYGauge][withdraw_gauge] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(_crvYToken,_crvYGauge);
-		emit NewWhitelist(_crvYGauge, deposit_gauge, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvYGauge, withdraw_gauge, ALLOWED_NO_MSG_VALUE);
+		_approveMax(_crvYToken, _crvYGauge);
+		_addWhitelist(_crvYGauge, deposit_gauge, false);
+		_addWhitelist(_crvYGauge, withdraw_gauge, false);
 
 		////////////// ALLOW crvUSDTComp Pool //////////////
 		address _crvUSDTCompDeposit = 0xac795D2c97e60DF6a99ff1c814727302fD747a80;
 		address _crvUSDTCompToken = 0x9fC689CCaDa600B6DF723D9E47D84d76664a1F23;
-		IERC20(underlying).safeApprove(_crvUSDTCompDeposit, type(uint256).max);
-		IERC20(_crvUSDTCompToken).safeApprove(_crvUSDTCompDeposit, type(uint256).max);
-		whitelist[_crvUSDTCompDeposit][add_liquidity_3] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvUSDTCompDeposit][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(underlying, _crvUSDTCompDeposit);
-		emit NewApproval(_crvUSDTCompToken, _crvUSDTCompDeposit);
-		emit NewWhitelist(_crvUSDTCompDeposit, add_liquidity_3, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvUSDTCompDeposit, remove_liquidity_one_burn, ALLOWED_NO_MSG_VALUE);
+		_approveMax(underlying, _crvUSDTCompDeposit);
+		_approveMax(_crvUSDTCompToken, _crvUSDTCompDeposit);  // allow withdraws, lending pool
+		_addWhitelist(_crvUSDTCompDeposit, add_liquidity_3, false);
+		_addWhitelist(_crvUSDTCompDeposit, remove_liquidity_one_burn, false);
 
 		////////////// ALLOW crvUSDTComp Gauge //////////////
 		address _crvUSDTCompGauge = 0xBC89cd85491d81C6AD2954E6d0362Ee29fCa8F53;
-		IERC20(_crvUSDTCompToken).safeApprove(_crvUSDTCompGauge, type(uint256).max);
-		whitelist[_crvUSDTCompGauge][deposit_gauge] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvUSDTCompGauge][withdraw_gauge] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(_crvUSDTCompToken, _crvUSDTCompGauge);
-		emit NewWhitelist(_crvUSDTCompGauge, deposit_gauge, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvUSDTCompGauge, withdraw_gauge, ALLOWED_NO_MSG_VALUE);
+		_approveMax(_crvUSDTCompToken, _crvUSDTCompGauge);
+		_addWhitelist(_crvUSDTCompGauge, deposit_gauge, false);
+		_addWhitelist(_crvUSDTCompGauge, withdraw_gauge, false);
 
 		////////////// ALLOW crvIBPool Pool //////////////
 		address _crvIBPool = 0x2dded6Da1BF5DBdF597C45fcFaa3194e53EcfeAF;
-		IERC20(underlying).safeApprove(_crvIBPool, type(uint256).max);
-		whitelist[_crvIBPool][add_liquidity_u_3] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvIBPool][remove_liquidity_one_burn] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(underlying, _crvIBPool);
-		emit NewWhitelist(_crvIBPool, add_liquidity_u_3, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvIBPool, remove_liquidity_one_burn, ALLOWED_NO_MSG_VALUE);
+		_approveMax(underlying, _crvIBPool);
+		_addWhitelist(_crvIBPool, add_liquidity_u_3, false);
+		_addWhitelist(_crvIBPool, remove_liquidity_one_burn, false);
 
 		////////////// ALLOW crvIBPool Gauge //////////////
 		address _crvIBGauge = 0xF5194c3325202F456c95c1Cf0cA36f8475C1949F;
 		address _crvIBToken = 0x5282a4eF67D9C33135340fB3289cc1711c13638C;
-		IERC20(_crvIBToken).safeApprove(_crvIBGauge, type(uint256).max);
-		whitelist[_crvIBGauge][deposit_gauge] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvIBGauge][withdraw_gauge] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(_crvIBToken, _crvIBGauge);
-		emit NewWhitelist(_crvIBGauge, deposit_gauge, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvIBGauge, withdraw_gauge, ALLOWED_NO_MSG_VALUE);
+		_approveMax(_crvIBToken, _crvIBGauge);
+		_addWhitelist(_crvIBGauge, deposit_gauge, false);
+		_addWhitelist(_crvIBGauge, withdraw_gauge, false);
 
 		////////////// CRV tokens mint, sell Sushi/Uni //////////////
 		address _crvMintr = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
-		whitelist[_crvMintr][mint] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_crvMintr][mint_many] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewWhitelist(_crvMintr, mint, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_crvMintr, mint_many, ALLOWED_NO_MSG_VALUE);
+		_addWhitelist(_crvMintr, mint, false);
+		_addWhitelist(_crvMintr, mint_many, false);
 
 		// address CRVToken = 0xD533a949740bb3306d119CC777fa900bA034cd52; -- already in FarmBossV1
-		IERC20(CRVToken).safeApprove(SushiswapRouter, type(uint256).max);
-		IERC20(CRVToken).safeApprove(UniswapRouter, type(uint256).max);
-
-		emit NewApproval(CRVToken, SushiswapRouter);
-		emit NewApproval(CRVToken, UniswapRouter);
+		_approveMax(CRVToken, SushiswapRouter);
+		_approveMax(CRVToken, UniswapRouter);
 
 		////////////// END ALLOW CURVE 3, s, y, ib, comp, busd, aave, usdt pools //////////////
 
@@ -307,10 +229,14 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		whitelist[_ahUSDC][withdraw] = ALLOWED_NO_MSG_VALUE;
 		whitelist[_ahUSDC][claim] = ALLOWED_NO_MSG_VALUE; // claim ALPHA token reward
 
+		_approveMax(underlying, _ahUSDC);
+		_addWhitelist(_ahUSDC, deposit, false);
+		_addWhitelist(_ahUSDC, withdraw, false);
+		_addWhitelist(_ahUSDC, claim, false);
+
 		address ALPHA_TOKEN = 0xa1faa113cbE53436Df28FF0aEe54275c13B40975;
-		// swapping is done by a function in FarmBossV1 for safety
-		IERC20(ALPHA_TOKEN).safeApprove(SushiswapRouter, type(uint256).max);
-		IERC20(ALPHA_TOKEN).safeApprove(UniswapRouter, type(uint256).max);
+		_approveMax(ALPHA_TOKEN, SushiswapRouter);
+		_approveMax(ALPHA_TOKEN, UniswapRouter);
 		////////////// END ALLOW AlphaHomoraV2 USDC //////////////
 
 		////////////// ALLOW yEarn USDC //////////////
@@ -318,42 +244,38 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		IERC20(underlying).safeApprove(_yearnUSDC, type(uint256).max);
 		whitelist[_yearnUSDC][deposit] = ALLOWED_NO_MSG_VALUE;
 		whitelist[_yearnUSDC][withdraw] = ALLOWED_NO_MSG_VALUE;
+
+		_approveMax(underlying, _yearnUSDC);
+		_addWhitelist(_yearnUSDC, deposit, false);
+		_addWhitelist(_yearnUSDC, withdraw, false);
 		////////////// END ALLOW yEarn USDC //////////////
 
 		////////////// ALLOW Compound USDC //////////////
 		address _compUSDC = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
-		IERC20(underlying).safeApprove(_compUSDC, type(uint256).max);
-		whitelist[_compUSDC][mint_ctoken] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_compUSDC][redeem_ctoken] = ALLOWED_NO_MSG_VALUE;
+		_approveMax(underlying, _compUSDC);
+		_addWhitelist(_compUSDC, mint_ctoken, false);
+		_addWhitelist(_compUSDC, redeem_ctoken, false);
 
 		address _comptroller = 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B; // claimComp
-		whitelist[_comptroller][claim_COMP] = ALLOWED_NO_MSG_VALUE;
+		_addWhitelist(_comptroller, claim_COMP, false);
 
-		address _COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888; // allow COMP sell on 1inch
-		IERC20(_COMP).safeApprove(SushiswapRouter, type(uint256).max);
-		IERC20(_COMP).safeApprove(UniswapRouter, type(uint256).max);
+		address _COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888;
+		_approveMax(_COMP, SushiswapRouter);
+		_approveMax(_COMP, UniswapRouter);
 		////////////// END ALLOW Compound USDC //////////////
 
 		////////////// ALLOW IDLE Finance USDC //////////////
 		address _idleBestUSDCv4 = 0x5274891bEC421B39D23760c04A6755eCB444797C;
-		IERC20(underlying).safeApprove(_idleBestUSDCv4, type(uint256).max);
-		whitelist[_idleBestUSDCv4][mint_idle] = ALLOWED_NO_MSG_VALUE;
-		whitelist[_idleBestUSDCv4][redeem_idle] = ALLOWED_NO_MSG_VALUE;
-
-		emit NewApproval(underlying, _idleBestUSDCv4);
-		emit NewWhitelist(_idleBestUSDCv4, mint_idle, ALLOWED_NO_MSG_VALUE);
-		emit NewWhitelist(_idleBestUSDCv4, redeem_idle, ALLOWED_NO_MSG_VALUE);
+		_approveMax(underlying, _idleBestUSDCv4);
+		_addWhitelist(_idleBestUSDCv4, mint_idle, false);
+		_addWhitelist(_idleBestUSDCv4, redeem_idle, false);
 
 		// IDLEUSDC doesn't have a pure IDLEClaim() function, you need to either deposit/withdraw again, and then your IDLE & COMP will be sent
 		address IDLEToken = 0x875773784Af8135eA0ef43b5a374AaD105c5D39e;
-		IERC20(IDLEToken).safeApprove(SushiswapRouter, type(uint256).max);
-		IERC20(IDLEToken).safeApprove(UniswapRouter, type(uint256).max);
-
-		emit NewApproval(IDLEToken, SushiswapRouter);
-		emit NewApproval(IDLEToken, UniswapRouter);
+		_approveMax(IDLEToken, SushiswapRouter);
+		_approveMax(IDLEToken, UniswapRouter);
 
 		// NOTE: Comp rewards already are approved for liquidation above
-
 		////////////// END ALLOW IDLE Finance USDC //////////////
 	}
 }
