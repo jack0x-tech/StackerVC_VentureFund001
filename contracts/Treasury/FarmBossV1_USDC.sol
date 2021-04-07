@@ -70,6 +70,10 @@ contract FarmBossV1_USDC is FarmBossV1 {
 	bytes4 constant private redeem_ctoken = 0xdb006a75; // redeem(uint256 redeemTokens)
 	bytes4 constant private claim_COMP = 0x1c3db2e0; // claimComp(address holder, address[] cTokens)
 
+	// IDLE FINANCE FUNCTIONS
+	bytes4 constant private mint_idle = 0x2befabbf; // mintIdleToken(uint256 _amount, bool _skipRebalance, address _referral)
+	bytes4 constant private redeem_idle = 0x8b30b516; // redeemIdleToken(uint256 _amount)
+
 	constructor(address payable _governance, address _daoMultisig, address _treasury, address _underlying) public FarmBossV1(_governance, _daoMultisig, _treasury, _underlying){
 	}
 
@@ -331,6 +335,24 @@ contract FarmBossV1_USDC is FarmBossV1 {
 		////////////// END ALLOW Compound USDC //////////////
 
 		////////////// ALLOW IDLE Finance USDC //////////////
+		address _idleBestUSDCv4 = 0x5274891bEC421B39D23760c04A6755eCB444797C;
+		IERC20(underlying).safeApprove(_idleBestUSDCv4, type(uint256).max);
+		whitelist[_idleBestUSDCv4][mint_idle] = ALLOWED_NO_MSG_VALUE;
+		whitelist[_idleBestUSDCv4][redeem_idle] = ALLOWED_NO_MSG_VALUE;
+
+		emit NewApproval(underlying, _idleBestUSDCv4);
+		emit NewWhitelist(_idleBestUSDCv4, mint_idle, ALLOWED_NO_MSG_VALUE);
+		emit NewWhitelist(_idleBestUSDCv4, redeem_idle, ALLOWED_NO_MSG_VALUE);
+
+		// IDLEUSDC doesn't have a pure IDLEClaim() function, you need to either deposit/withdraw again, and then your IDLE & COMP will be sent
+		address IDLEToken = 0x875773784Af8135eA0ef43b5a374AaD105c5D39e;
+		IERC20(IDLEToken).safeApprove(SushiswapRouter, type(uint256).max);
+		IERC20(IDLEToken).safeApprove(UniswapRouter, type(uint256).max);
+
+		emit NewApproval(IDLEToken, SushiswapRouter);
+		emit NewApproval(IDLEToken, UniswapRouter);
+
+		// NOTE: Comp rewards already are approved for liquidation above
 
 		////////////// END ALLOW IDLE Finance USDC //////////////
 	}
