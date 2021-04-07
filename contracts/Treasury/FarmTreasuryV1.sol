@@ -301,9 +301,6 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 	function _verify(address _account, uint256 _amountUnderlyingToSend) internal override {
 		DepositInfo memory _existingInfo = userDeposits[_account];
 
-		// cannot withdraw/transfer same block as deposit (timestamp would be equal)
-		require(_existingInfo.timestampDeposit != block.timestamp, "FARMTREASURYV1: deposit this block");
-
 		uint256 _lockedAmt = _getLockedAmount(_account, _existingInfo.amountUnderlyingLocked, _existingInfo.timestampDeposit, _existingInfo.timestampUnlocked);
 		uint256 _balance = balanceOf(_account);
 
