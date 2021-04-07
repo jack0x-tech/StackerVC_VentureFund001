@@ -51,7 +51,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 	uint256 public baseToFarmer = 100;
 
 	// limits on rebalancing from the farmer, trying to negate errant rebalances
-	uint256 public rebalanceUpLimit = 100; // maximum of a 1.5% gain per rebalance
+	uint256 public rebalanceUpLimit = 150; // maximum of a 1.5% gain per rebalance
 	uint256 public rebalanceUpWaitTime = 23 hours;
 	uint256 public lastRebalanceUpTime;
 

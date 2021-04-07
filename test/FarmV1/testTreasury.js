@@ -11,7 +11,7 @@ const FarmBossV1_TEST = artifacts.require("FarmBossV1_TEST");
 contract("test FarmTreasuryV1", async (accounts) => {
 
 	const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
-	const SIX_HOURS = 6*60*60;
+	const TWENTYFOUR_HOURS = 24*60*60;
 	const ONE_DAY = 24*60*60;
 	const ONE_YEAR = 365*24*60*60;
 
@@ -20,6 +20,7 @@ contract("test FarmTreasuryV1", async (accounts) => {
 	const USER = accounts[2];
 	const FARMER_REWARDS = accounts[3];
 	const USER_2 = accounts[4];
+	const DAOMSIG = accounts[5];
 
 	async function _initUnderlying(){
 		return await MintableToken.new(6, {from: FARMER});
@@ -30,7 +31,7 @@ contract("test FarmTreasuryV1", async (accounts) => {
 	}
 
 	async function _initFarmBoss(_underlyingInstance, _treasuryInstance){
-		let _farmboss = await FarmBossV1_TEST.new(GOVERNANCE, _treasuryInstance.address, _underlyingInstance.address, {from: FARMER});
+		let _farmboss = await FarmBossV1_TEST.new(GOVERNANCE, DAOMSIG, _treasuryInstance.address, _underlyingInstance.address, {from: FARMER});
 
 		await _treasuryInstance.setFarmBoss(_farmboss.address, {from: FARMER});
 		await _treasuryInstance.setGovernance(GOVERNANCE, {from: FARMER});
@@ -123,8 +124,6 @@ contract("test FarmTreasuryV1", async (accounts) => {
 		const _depositAmt = 100*1e6;
 		await _makeFirstDeposit(_underlying, _treasury, _depositAmt);
 
-		_increasetime(SIX_HOURS);
-
 		await _farmboss.rebalanceUp(0, FARMER_REWARDS, {from: FARMER}); // this should send 90% of the funds to the farmboss, and 10% in the hot wallet
 
 		assert.equal((_depositAmt/10).toString(), (await _underlying.balanceOf(_treasury.address)).toString());
@@ -142,10 +141,9 @@ contract("test FarmTreasuryV1", async (accounts) => {
 
 		const _depositAmt = 100*1e6;
 		await _makeFirstDeposit(_underlying, _treasury, _depositAmt);
-
-		_increasetime(SIX_HOURS);
-
 		await _farmboss.rebalanceUp(0, FARMER_REWARDS, {from: FARMER}); // this should send 90% of the funds to the farmboss, and 10% in the hot wallet
+
+		_increasetime(TWENTYFOUR_HOURS);
 
 		const _profitAmt = _depositAmt/100;
 		const _totalAmt = _depositAmt + _profitAmt;
@@ -176,9 +174,9 @@ contract("test FarmTreasuryV1", async (accounts) => {
 
 		const _depositAmt = 1000000*1e6; // 1M USDC
 		await _makeFirstDeposit(_underlying, _treasury, _depositAmt);
-
-		_increasetime(SIX_HOURS);
 		await _farmboss.rebalanceUp(0, FARMER_REWARDS, {from: FARMER}); // this should send 90% of the funds to the farmboss, and 10% in the hot wallet
+
+		_increasetime(TWENTYFOUR_HOURS);
 
 		const _profitAmt = _depositAmt/100;
 		const _performanceAmt = _profitAmt/10;
@@ -217,13 +215,12 @@ contract("test FarmTreasuryV1", async (accounts) => {
 		const _depositAmt = 77000000*1e6; // 77M USDC
 		await _makeFirstDeposit(_underlying, _treasury, _depositAmt);
 
-		_increasetime(SIX_HOURS);
 		await _farmboss.rebalanceUp(0, FARMER_REWARDS, {from: FARMER}); // this should send 90% of the funds to the farmboss, and 10% in the hot wallet
 
 		console.log("total shares", (await _treasury.totalShares()).toString()); // shares DO change
 		console.log("last rebalanceUp", (await _treasury.lastRebalanceUpTime()).toString());
 
-		_increasetime(ONE_YEAR - SIX_HOURS - 1); // minus one to make it exactly one year when we take fee... timing always a little weird for testing...
+		_increasetime(ONE_YEAR - 1); // minus one to make it exactly one year when we take fee... timing always a little weird for testing...
 		await _underlying.mint(_farmboss.address, 1, {from: FARMER});
 		await _farmboss.rebalanceUp(1, FARMER_REWARDS, {from: FARMER}); // no perfomance fee, profit 1 wei after year, just annual fee rewards -> farmer/gov
 
@@ -340,7 +337,6 @@ contract("test FarmTreasuryV1", async (accounts) => {
 		const _depositAmt = 1000*1e6; // 1000 USDC
 		await _makeFirstDeposit(_underlying, _treasury, _depositAmt);
 
-		_increasetime(SIX_HOURS);
 		await _farmboss.rebalanceUp(0, FARMER_REWARDS, {from: FARMER}); // this should send 90% of the funds to the farmboss, and 10% in the hot wallet
 
 		// farmer made a loss of 100 USDC, so we are at 900 USDC AUM now
@@ -361,7 +357,6 @@ contract("test FarmTreasuryV1", async (accounts) => {
 		const _depositAmt = 1000*1e6; // 1000 USDC
 		await _makeFirstDeposit(_underlying, _treasury, _depositAmt);
 
-		_increasetime(SIX_HOURS);
 		await _farmboss.rebalanceUp(0, FARMER_REWARDS, {from: FARMER}); // this should send 90% of the funds to the farmboss, and 10% in the hot wallet
 
 		// farmer made a loss of 100 USDC, so we are at 900 USDC AUM now

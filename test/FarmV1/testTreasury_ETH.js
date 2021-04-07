@@ -17,6 +17,7 @@ contract("test FarmTreasuryV1_ETH for depositETH/withdrawETH", async (accounts) 
 	const USER = accounts[2];
 	const FARMER_REWARDS = accounts[3];
 	const USER_2 = accounts[4];
+	const DAOMSIG = accounts[5];
 
 	async function _initUnderlying(){
 		return await WrapETH.new({from: FARMER});
@@ -27,7 +28,7 @@ contract("test FarmTreasuryV1_ETH for depositETH/withdrawETH", async (accounts) 
 	}
 
 	async function _initFarmBoss(_underlyingInstance, _treasuryInstance){
-		let _farmboss = await FarmBossV1_TEST.new(GOVERNANCE, _treasuryInstance.address, _underlyingInstance.address, {from: FARMER});
+		let _farmboss = await FarmBossV1_TEST.new(GOVERNANCE, DAOMSIG, _treasuryInstance.address, _underlyingInstance.address, {from: FARMER});
 
 		await _treasuryInstance.setFarmBoss(_farmboss.address, {from: FARMER});
 		await _treasuryInstance.setGovernance(GOVERNANCE, {from: FARMER});
