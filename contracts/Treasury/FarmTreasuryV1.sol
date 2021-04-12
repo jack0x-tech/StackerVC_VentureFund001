@@ -151,7 +151,7 @@ contract FarmTreasuryV1 is ReentrancyGuard, FarmTokenV1 {
 
 	function setRebalanceUpWaitTime(uint256 _new) external {
 		require(msg.sender == governance, "FARMTREASURYV1: !governance");
-		require(_new <= 1 weeks, "FARMTREASURYV1: !governance");
+		require(_new <= 1 weeks, "FARMTREASURYV1: > 1 week");
 
 		rebalanceUpWaitTime = _new;
 	}

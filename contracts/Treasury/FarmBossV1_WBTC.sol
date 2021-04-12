@@ -62,7 +62,7 @@ contract FarmBossV1_WBTC is FarmBossV1 {
 		address _compEthRepayHelper = 0xf859A1AD94BcF445A406B892eF0d3082f4174088;
 
 		// stackVaults
-		address _stackETH = 0x0572bf36dBD8BBF41ACfaA74139B20ED8a7C0366;
+		address _stackETH = 0x70e51DFc7A9FC391995C2B2f027BC49D4fe01577;
 
 		_approveMax(underlying, _compWBTC);
 		// mint/redeem compBTC
