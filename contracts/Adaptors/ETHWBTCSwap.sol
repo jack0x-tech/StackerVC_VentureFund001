@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 /*
+	Adaptor to allow the FarmBoss_WBTC to sell ETH gains for more WBTC on Uniswap/Sushiswap.
+
+	We can also allow WBTC to be sold for ETH, if needed (reverse). However this will not be whitelisted initially.
 */
 
 pragma solidity ^0.6.11;

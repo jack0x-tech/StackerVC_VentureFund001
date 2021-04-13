@@ -2,7 +2,7 @@
 /*
 A simple gauge contract to measure the amount of tokens locked, and reward users in a different token.
 
-Using this for STACK/ETH Uni LP currently.
+This Gauge works for a "sharesOf" based rebalance token.
 */
 
 pragma solidity ^0.6.11;
